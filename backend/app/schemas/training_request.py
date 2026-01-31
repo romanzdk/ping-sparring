@@ -4,6 +4,7 @@ from typing import Any
 
 
 class TrainingRequestBase(BaseModel):
+    sport: str = "stolni_tenis"
     title: str
     description: str | None = None
     preferred_days: list[int] = []  # 0-6 (Monday-Sunday)
@@ -19,6 +20,7 @@ class TrainingRequestCreate(TrainingRequestBase):
 
 
 class TrainingRequestUpdate(BaseModel):
+    sport: str | None = None
     title: str | None = None
     description: str | None = None
     preferred_days: list[int] | None = None
@@ -47,6 +49,7 @@ class TrainingRequestPublicResponse(BaseModel):
     """Training request list item for unauthenticated users – no description, no player id."""
 
     id: int
+    sport: str = "stolni_tenis"
     title: str
     preferred_days: list[int]
     district_ids: list[int]

@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import api from '../services/api'
 import Layout from '../components/Layout'
 import { Calendar, Clock, MapPin, Users, Target, Zap, ArrowLeft, Info, DollarSign, HelpCircle } from 'lucide-react'
+import { SPORTS } from '../types'
 
 export default function TrainingCreate() {
   const navigate = useNavigate()
@@ -11,6 +12,7 @@ export default function TrainingCreate() {
   const [error, setError] = useState('')
 
   const [formData, setFormData] = useState({
+    sport: 'stolni_tenis',
     title: '',
     description: '',
     schedule_type: 'recurring' as 'recurring' | 'one_time',
@@ -138,6 +140,26 @@ export default function TrainingCreate() {
 
           <form onSubmit={handleSubmit} className="space-y-8">
             <p className="text-sm text-gray-600 mb-6">Pole označená <span className="text-red-600 font-semibold">*</span> jsou povinná, ostatní jsou nepovinná.</p>
+            {/* Sport */}
+            <section className="space-y-4">
+              <h2 className="text-xl font-bold text-gray-900 flex items-center">
+                <Target className="w-5 h-5 mr-2 text-green-500" />
+                Sport
+              </h2>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Sport <span className="text-red-600">*</span></label>
+                <select
+                  required
+                  value={formData.sport}
+                  onChange={e => setFormData({ ...formData, sport: e.target.value })}
+                  className="input"
+                >
+                  {SPORTS.map(s => (
+                    <option key={s.value} value={s.value}>{s.emoji} {s.label}</option>
+                  ))}
+                </select>
+              </div>
+            </section>
             {/* Typ tréninku */}
             <section className="space-y-4">
               <h2 className="text-xl font-bold text-gray-900 flex items-center">
@@ -231,7 +253,7 @@ export default function TrainingCreate() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Lokalita (název herny) <span className="text-red-600">*</span></label>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Lokalita (název místa) <span className="text-red-600">*</span></label>
                   <input
                     type="text"
                     required

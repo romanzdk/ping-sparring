@@ -17,7 +17,8 @@ class Settings(BaseSettings):
     SMTP_USER: str | None = None
     SMTP_PASSWORD: str | None = None
     SMTP_FROM_EMAIL: str = "noreply@pingsparring.cz"
-    
+    CONTACT_EMAIL: str | None = None  # Kam chodí zprávy z kontaktního formuláře (default SMTP_FROM_EMAIL)
+
     # Frontend
     FRONTEND_URL: str = "http://localhost:5173"
     

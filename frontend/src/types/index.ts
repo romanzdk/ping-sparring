@@ -34,9 +34,17 @@ export interface Club {
 
 export type ScheduleType = 'recurring' | 'one_time'
 
+/** Sport options for trainings and requests. Value is API slug. */
+export const SPORTS = [
+  { value: 'stolni_tenis', label: 'Stolní tenis', emoji: '🏓' },
+] as const
+
+export type SportValue = (typeof SPORTS)[number]['value']
+
 export interface Training {
   id: number
   club_id: number
+  sport?: string
   title: string
   description: string | null
   schedule_type?: ScheduleType
@@ -107,6 +115,7 @@ export interface Notification {
 export interface TrainingRequest {
   id: number
   player_id: number
+  sport?: string
   title: string
   description?: string
   preferred_days: number[]

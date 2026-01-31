@@ -46,9 +46,9 @@ export default function Login() {
         </Link>
         <div className="text-center">
           <div className="inline-block mb-4">
-            <span className="text-5xl sm:text-6xl" aria-hidden>🏓</span>
+            <span className="text-5xl sm:text-6xl" aria-hidden>🏆</span>
           </div>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-teal-700 mb-2">PingSparring</h1>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-teal-700 mb-2">Můj trénink</h1>
           <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-2">Přihlášení</h2>
           <p className="mt-2 text-gray-600 font-medium">
             Vítejte zpět! Přihlaste se ke svému účtu

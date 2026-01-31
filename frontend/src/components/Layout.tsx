@@ -1,6 +1,6 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { LogOut, User, Home, Calendar, Bell, Users, LogIn, UserPlus, Menu, X } from 'lucide-react'
+import { LogOut, User, Home, Calendar, Bell, Users, LogIn, UserPlus, Menu, X, Mail } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import api from '../services/api'
 import { Notification } from '../types'
@@ -32,7 +32,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     setMobileMenuOpen(false)
   }
 
-  const isPublicListingPage = location.pathname === '/trainings' || location.pathname === '/training-requests'
+  const isPublicListingPage =
+    location.pathname === '/trainings' ||
+    location.pathname === '/training-requests' ||
+    location.pathname === '/contact'
 
   const PublicNav = () => (
     <>
@@ -46,6 +49,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       </Link>
       <Link to="/#jak-to-funguje" className={navLinkClass} onClick={() => setMobileMenuOpen(false)}>
         Jak to funguje
+      </Link>
+      <Link to="/contact" className={navLinkClass} onClick={() => setMobileMenuOpen(false)}>
+        <Mail className="w-5 h-5 mr-2 flex-shrink-0" aria-hidden />
+        Kontakt
       </Link>
     </>
   )
@@ -83,8 +90,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex justify-between items-center min-h-[56px] sm:min-h-16">
                 <Link to="/" className="flex items-center text-lg sm:text-xl font-bold text-teal-700 hover:text-teal-800 transition-colors min-h-[44px] items-center">
-                  <span className="text-xl sm:text-2xl mr-2" aria-hidden>🏓</span>
-                  PingSparring
+                  <span className="text-xl sm:text-2xl mr-2" aria-hidden>🏆</span>
+                  Můj trénink
                 </Link>
                 <div className="hidden md:flex md:items-center md:gap-1">
                   <PublicNav />
@@ -134,8 +141,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center min-h-[56px] sm:min-h-16">
             <Link to="/dashboard" className="flex items-center text-lg sm:text-xl font-bold text-teal-700 hover:text-teal-800 transition-colors min-h-[44px] items-center">
-              <span className="text-xl sm:text-2xl mr-2" aria-hidden>🏓</span>
-              PingSparring
+              <span className="text-xl sm:text-2xl mr-2" aria-hidden>🏆</span>
+              Můj trénink
             </Link>
             <div className="hidden md:flex md:items-center md:gap-1">
               <AuthNav />

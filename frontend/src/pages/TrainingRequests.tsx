@@ -4,10 +4,12 @@ import { useAuth } from '../hooks/useAuth'
 import api from '../services/api'
 import Layout from '../components/Layout'
 import { Calendar, MapPin, Target, Plus, Users, Sparkles, CheckCircle, Edit2, Trash2, Filter, Search, LogIn, UserPlus, Mail, Phone } from 'lucide-react'
+import { SPORTS } from '../types'
 
 interface TrainingRequest {
   id: number
   player_id: number
+  sport?: string
   title: string
   description?: string
   preferred_days: number[]
@@ -33,6 +35,7 @@ export default function TrainingRequests() {
   const [deleting, setDeleting] = useState<number | null>(null)
 
   const [searchTerm, setSearchTerm] = useState('')
+  const [selectedSport, setSelectedSport] = useState<string>('')
   const [selectedDistrict, setSelectedDistrict] = useState<number | null>(null)
   const [eloMin, setEloMin] = useState<number | null>(null)
   const [eloMax, setEloMax] = useState<number | null>(null)
@@ -48,7 +51,7 @@ export default function TrainingRequests() {
     if (user?.role === 'club' || !user) {
       filterRequests()
     }
-  }, [searchTerm, selectedDistrict, eloMin, eloMax, allRequests, user])
+  }, [searchTerm, selectedSport, selectedDistrict, eloMin, eloMax, allRequests, user])
 
   const loadRequests = async () => {
     setLoading(true)
@@ -71,6 +74,10 @@ export default function TrainingRequests() {
         r.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (r.description && r.description.toLowerCase().includes(searchTerm.toLowerCase()))
       )
+    }
+
+    if (selectedSport) {
+      filtered = filtered.filter(r => r.sport === selectedSport)
     }
 
     if (selectedDistrict) {
@@ -165,7 +172,20 @@ export default function TrainingRequests() {
               <h2 className="text-xl font-bold text-gray-900">Filtry</h2>
             </div>
             <p className="text-sm text-gray-600 mb-4">Všechna pole filtrů jsou <span className="font-medium">nepovinná</span>.</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Sport <span className="text-gray-500 font-normal">(nepovinné)</span></label>
+                <select
+                  value={selectedSport}
+                  onChange={e => setSelectedSport(e.target.value)}
+                  className="input"
+                >
+                  <option value="">Všechny sporty</option>
+                  {SPORTS.map(s => (
+                    <option key={s.value} value={s.value}>{s.emoji} {s.label}</option>
+                  ))}
+                </select>
+              </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Vyhledávání <span className="text-gray-500 font-normal">(nepovinné)</span></label>
                 <div className="relative">

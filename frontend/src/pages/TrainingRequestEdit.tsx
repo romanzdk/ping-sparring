@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import api from '../services/api'
 import Layout from '../components/Layout'
 import { Calendar, Target, Save, ArrowLeft, MapPin, Edit2, Phone } from 'lucide-react'
+import { SPORTS } from '../types'
 
 export default function TrainingRequestEdit() {
   const { id } = useParams()
@@ -13,6 +14,7 @@ export default function TrainingRequestEdit() {
   const [error, setError] = useState('')
 
   const [formData, setFormData] = useState({
+    sport: 'stolni_tenis',
     title: '',
     description: '',
     preferred_days: [] as number[],
@@ -39,6 +41,7 @@ export default function TrainingRequestEdit() {
         .then(res => {
           const request = res.data
           setFormData({
+            sport: (request as { sport?: string }).sport || 'stolni_tenis',
             title: request.title,
             description: request.description || '',
             preferred_days: request.preferred_days || [],
@@ -65,6 +68,7 @@ export default function TrainingRequestEdit() {
     try {
       const data = {
         ...formData,
+        sport: formData.sport,
         district_ids: formData.district_ids.map(id => parseInt(id)),
         phone: formData.phone || null
       }
@@ -142,6 +146,25 @@ export default function TrainingRequestEdit() {
 
           <p className="text-sm text-gray-600 mb-6">Pole označená <span className="text-red-600 font-semibold">*</span> jsou povinná, ostatní jsou nepovinná.</p>
           <form onSubmit={handleSubmit} className="space-y-8">
+            <section className="space-y-4">
+              <h2 className="text-xl font-bold text-gray-900 flex items-center">
+                <Target className="w-5 h-5 mr-2 text-green-500" />
+                Sport
+              </h2>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Sport <span className="text-red-600">*</span></label>
+                <select
+                  required
+                  value={formData.sport}
+                  onChange={e => setFormData({ ...formData, sport: e.target.value })}
+                  className="input"
+                >
+                  {SPORTS.map(s => (
+                    <option key={s.value} value={s.value}>{s.emoji} {s.label}</option>
+                  ))}
+                </select>
+              </div>
+            </section>
             <section className="space-y-4">
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Název poptávky <span className="text-red-600">*</span></label>

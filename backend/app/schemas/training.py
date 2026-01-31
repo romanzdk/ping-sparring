@@ -4,6 +4,7 @@ from decimal import Decimal
 
 
 class TrainingBase(BaseModel):
+    sport: str = "stolni_tenis"
     title: str | None = None
     description: str | None = None
     schedule_type: str = "recurring"  # "recurring" | "one_time"
@@ -53,6 +54,7 @@ class TrainingPublicResponse(BaseModel):
     """Training list item for unauthenticated users – no exact place, only district."""
 
     id: int
+    sport: str = "stolni_tenis"
     title: str
     description: str | None = None
     schedule_type: str = "recurring"

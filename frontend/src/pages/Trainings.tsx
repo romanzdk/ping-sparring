@@ -6,6 +6,7 @@ import { Training } from '../types'
 import Layout from '../components/Layout'
 import { Calendar, MapPin, Users, Clock, Search, Filter, Target, Sparkles, LogIn, UserPlus, Mail, Phone } from 'lucide-react'
 import { getDayName, formatTrainingDateLabel, getTrainingDayShort } from '../utils/trainingDate'
+import { SPORTS } from '../types'
 
 export default function Trainings() {
   const { isAuthenticated } = useAuth()
@@ -15,6 +16,7 @@ export default function Trainings() {
   const [districts, setDistricts] = useState<{ id: number; name: string; code: string }[]>([])
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState({
+    sport: '',
     district_id: '',
     elo_min: '',
     elo_max: '',
@@ -53,6 +55,7 @@ export default function Trainings() {
     setLoading(true)
     try {
       const params = new URLSearchParams()
+      if (filters.sport) params.append('sport', filters.sport)
       if (filters.district_id) params.append('district_id', filters.district_id)
       if (filters.elo_min) params.append('elo_min', filters.elo_min)
       if (filters.elo_max) params.append('elo_max', filters.elo_max)
@@ -102,7 +105,7 @@ export default function Trainings() {
           <div>
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2">
               <span className="text-teal-600">Nabídky tréninků</span>
-              <span className="text-gray-700 ml-2" aria-hidden>🏓</span>
+              <span className="text-gray-700 ml-2" aria-hidden>🏆</span>
             </h1>
             <p className="text-gray-600 font-medium">Najdi vhodný trénink pro sebe</p>
           </div>
@@ -114,7 +117,20 @@ export default function Trainings() {
             <h2 className="text-xl font-bold text-gray-900">Filtry</h2>
           </div>
           <p className="text-sm text-gray-600 mb-4">Všechna pole filtrů jsou <span className="font-medium">nepovinná</span>.</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">Sport <span className="text-gray-500 font-normal">(nepovinné)</span></label>
+              <select
+                value={filters.sport}
+                onChange={(e) => setFilters({ ...filters, sport: e.target.value })}
+                className="input"
+              >
+                <option value="">Všechny sporty</option>
+                {SPORTS.map(s => (
+                  <option key={s.value} value={s.value}>{s.emoji} {s.label}</option>
+                ))}
+              </select>
+            </div>
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2">Vyhledávání <span className="text-gray-500 font-normal">(nepovinné)</span></label>
               <div className="relative">
@@ -175,11 +191,11 @@ export default function Trainings() {
               />
             </div>
           </div>
-          {(searchTerm || filters.district_id || filters.elo_min || filters.elo_max || filters.day_of_week) && (
+          {(searchTerm || filters.sport || filters.district_id || filters.elo_min || filters.elo_max || filters.day_of_week) && (
             <button
               onClick={() => {
                 setSearchTerm('')
-                setFilters({ district_id: '', elo_min: '', elo_max: '', day_of_week: '' })
+                setFilters({ sport: '', district_id: '', elo_min: '', elo_max: '', day_of_week: '' })
               }}
               className="btn btn-secondary text-sm"
             >

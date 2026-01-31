@@ -53,6 +53,7 @@ async def create_training_request(
     # Create request
     training_request = TrainingRequest(
         player_id=player.id,
+        sport=request_data.sport or "stolni_tenis",
         title=request_data.title,
         description=request_data.description,
         preferred_days=request_data.preferred_days,
@@ -75,6 +76,7 @@ async def create_training_request(
 async def get_training_requests(
     status_filter: str | None = Query(None),
     district_id: int | None = Query(None),
+    sport: str | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
     current_user: User | None = Depends(get_optional_user),
@@ -85,12 +87,15 @@ async def get_training_requests(
         query = select(TrainingRequest).where(TrainingRequest.status == TrainingRequestStatus.OPEN)
         if district_id is not None:
             query = query.where(TrainingRequest.district_ids.contains([district_id]))
+        if sport is not None:
+            query = query.where(TrainingRequest.sport == sport)
         query = query.offset(skip).limit(limit).order_by(TrainingRequest.created_at.desc())
         result = await db.execute(query)
         requests = result.scalars().all()
         return [
             TrainingRequestPublicResponse(
                 id=r.id,
+                sport=r.sport,
                 title=r.title,
                 preferred_days=r.preferred_days or [],
                 district_ids=[int(x) for x in (r.district_ids or [])],
@@ -110,6 +115,8 @@ async def get_training_requests(
         query = select(TrainingRequest).where(TrainingRequest.player_id == player.id)
         if status_filter:
             query = query.where(TrainingRequest.status == status_filter)
+        if sport is not None:
+            query = query.where(TrainingRequest.sport == sport)
         query = query.offset(skip).limit(limit).order_by(TrainingRequest.created_at.desc())
         result = await db.execute(query)
         return result.scalars().all()
@@ -118,6 +125,8 @@ async def get_training_requests(
         query = select(TrainingRequest).where(TrainingRequest.status == TrainingRequestStatus.OPEN)
         if district_id is not None:
             query = query.where(TrainingRequest.district_ids.contains([district_id]))
+        if sport is not None:
+            query = query.where(TrainingRequest.sport == sport)
         query = query.offset(skip).limit(limit).order_by(TrainingRequest.created_at.desc())
         result = await db.execute(query)
         requests = result.scalars().all()
@@ -201,6 +210,7 @@ async def get_training_request(
     return TrainingRequestResponse(
         id=req.id,
         player_id=req.player_id,
+        sport=req.sport,
         title=req.title,
         description=req.description,
         preferred_days=req.preferred_days or [],

@@ -29,6 +29,7 @@ class TrainingRequest(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     player_id = Column(Integer, ForeignKey("players.id"), nullable=False)
+    sport = Column(String, nullable=False, default="stolni_tenis")
     title = Column(String, nullable=False)
     description = Column(Text, nullable=True)
     preferred_days = Column(JSON, nullable=False, default=list)  # List of day numbers [0-6]

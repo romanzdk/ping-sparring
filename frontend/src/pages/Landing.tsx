@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
 import { Users, Calendar, CheckCircle, ArrowRight, MapPin, Settings, Star } from 'lucide-react'
+import { SPORTS } from '../types'
 
 export default function Landing() {
   const { hash } = useLocation()
@@ -23,10 +24,10 @@ export default function Landing() {
               Najdi si svého sparing partnera na trénink.
             </p>
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
-              Trénuj <span style={{ color: 'rgba(5, 150, 105, 1)' }}>častěji</span>, hraj <span style={{ color: 'rgba(5, 150, 105, 1)' }}>lépe</span>
+              Trénuj <span style={{ color: 'rgb(5 150 105)' }}>častěji</span>, buď <span style={{ color: 'rgb(249 115 22)' }}>lepší</span>
             </h1>
             <p className="text-lg sm:text-xl text-gray-600 mb-6 leading-relaxed">
-              Platforma pro párování stolně-tenisových tréninků. Najdi kvalitní sparing partnery ve tvém okolí na tvé úrovni. Bez zbytečností, bez chaosu.
+              Platforma pro párování tréninků. Najdi kvalitní sparing partnery ve tvém okolí na tvé úrovni. Bez zbytečností, bez chaosu.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
               <Link to="/register" className="btn btn-primary text-lg min-h-[48px] px-8">
@@ -80,15 +81,39 @@ export default function Landing() {
           <p className="mt-6 text-center text-gray-500 text-sm">
             Pro detail a přihlášení se <Link to="/register" className="text-teal-600 hover:underline font-medium">zaregistruj</Link> nebo <Link to="/login" className="text-teal-600 hover:underline font-medium">přihlas</Link>.
           </p>
+
+          {/* Podporované sporty */}
+          <div className="mt-12 sm:mt-16 pt-12 sm:pt-16 border-t border-gray-200">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 text-center">
+              Podporované sporty
+            </h2>
+            <p className="text-gray-600 text-center mb-6 max-w-xl mx-auto">
+              Na platformě můžeš hledat sparing partnery pro následující sporty.
+            </p>
+            <ul className="flex flex-wrap justify-center gap-3 sm:gap-4">
+              {SPORTS.map(({ value, label, emoji }) => (
+                <li
+                  key={value}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border-2 border-gray-100 hover:border-teal-200 text-gray-800 font-medium transition-colors"
+                >
+                  <span className="text-xl" aria-hidden>{emoji}</span>
+                  <span>{label}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-4 text-center text-gray-500 text-sm">
+              Další sporty mohou v průběhu času přibýt.
+            </p>
+          </div>
         </div>
       </section>
 
-      {/* Proč PingSparring? */}
+      {/* Proč Můj trénink? */}
       <section className="py-16 sm:py-24 bg-[#f8fafb]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12 sm:mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
-              Proč PingSparring?
+              Proč Můj trénink?
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
               Řešíme opakovaný problém pravidelného tréninku. Automaticky, transparentně, bez zbytečného chaosu.
@@ -96,7 +121,7 @@ export default function Landing() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {[
-              { icon: Settings, title: 'Párování podle úrovně', desc: 'Automatické doporučení ideálního sparing partnera podle ELO.', accent: 'teal' as const },
+              { icon: Settings, title: 'Párování podle úrovně', desc: 'Automatické doporučení ideálního sparing partnera například podle ELO.', accent: 'teal' as const },
               { icon: MapPin, title: 'Regionální tréninky', desc: 'Najdi sparing partnery ve svém okolí. Zadej lokaci a hraj.', accent: 'orange' as const },
               { icon: Calendar, title: 'Automatizace', desc: 'Zjednodušená administrace, řízení tréninků, správa výsledků.', accent: 'teal' as const },
               { icon: Star, title: 'Spolehlivost', desc: 'Systém hodnocení pro férové a spolehlivé hráče.', accent: 'orange' as const },
@@ -153,7 +178,7 @@ export default function Landing() {
                 Přidej svůj klub a staň se součástí naší platformy. Získej kvalitní hráče pro tréninky, spravuj rozvrhy a rozšiř komunitu.
               </p>
               <ul className="space-y-4 mb-8">
-                {['Automatické schvalování hráčů podle ELO', 'Přehledná správa rezervací', 'Celkový přehled tréninků', 'Plánování a oznámení automatizovány'].map((item) => (
+                {['Automatické schvalování hráčů například podle ELO', 'Přehledná správa rezervací', 'Celkový přehled tréninků', 'Plánování a oznámení automatizovány'].map((item) => (
                   <li key={item} className="flex items-start gap-3">
                     <CheckCircle className="w-6 h-6 text-teal-600 flex-shrink-0 mt-0.5" aria-hidden />
                     <span className="text-gray-700 font-medium">{item}</span>
@@ -167,7 +192,7 @@ export default function Landing() {
             </div>
             <div className="flex justify-center">
               <div className="w-full max-w-sm aspect-square rounded-2xl bg-gradient-to-br from-teal-50 to-cyan-50 flex items-center justify-center border border-gray-100">
-                <span className="text-8xl" aria-hidden>🏓</span>
+                <span className="text-8xl" aria-hidden>🏆</span>
               </div>
             </div>
           </div>
@@ -196,8 +221,8 @@ export default function Landing() {
           <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-8">
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-2xl" aria-hidden>🏓</span>
-                <span className="text-xl font-bold">PingSparring</span>
+                <span className="text-2xl" aria-hidden>🏆</span>
+                <span className="text-xl font-bold">Můj trénink</span>
               </div>
               <p className="text-gray-400 text-sm">
                 Najdi si svého ideálního sparing partnera.
@@ -207,7 +232,6 @@ export default function Landing() {
               <div>
                 <p className="font-semibold text-white mb-3">Platforma</p>
                 <ul className="space-y-2 text-sm text-gray-400">
-                  <li><Link to="/" className="hover:text-white transition-colors">O nás</Link></li>
                   <li><Link to="/#jak-to-funguje" className="hover:text-white transition-colors">Jak to funguje</Link></li>
                   <li><Link to="/login" className="hover:text-white transition-colors">Přihlásit se</Link></li>
                   <li><Link to="/register" className="hover:text-white transition-colors">Registrace</Link></li>
@@ -223,13 +247,13 @@ export default function Landing() {
               <div>
                 <p className="font-semibold text-white mb-3">Podpora</p>
                 <ul className="space-y-2 text-sm text-gray-400">
-                  <li><Link to="/profile" className="hover:text-white transition-colors">Kontakt</Link></li>
+                  <li><Link to="/contact" className="hover:text-white transition-colors">Kontakt</Link></li>
                 </ul>
               </div>
             </div>
           </div>
           <div className="mt-12 pt-8 border-t border-gray-700 text-center text-sm text-gray-500">
-            © 2026 PingSparring. Všechna práva vyhrazena.
+            © 2026 Můj trénink. Všechna práva vyhrazena.
           </div>
         </div>
       </footer>

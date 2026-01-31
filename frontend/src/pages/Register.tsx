@@ -54,11 +54,11 @@ export default function Register() {
           Zpět na úvodní stránku
         </Link>
         <div className="text-center">
-          <span className="text-5xl sm:text-6xl inline-block mb-4" aria-hidden>🏓</span>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-teal-700 mb-2">PingSparring</h1>
+          <span className="text-5xl sm:text-6xl inline-block mb-4" aria-hidden>🏆</span>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-teal-700 mb-2">Můj trénink</h1>
           <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-2">Registrace</h2>
           <p className="text-gray-600 font-medium">
-            Začněte svou stolní tenisovou cestu
+            Začněte svou sportovní cestu
           </p>
         </div>
 

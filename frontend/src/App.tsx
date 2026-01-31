@@ -15,6 +15,7 @@ import TrainingRequestDetail from './pages/TrainingRequestDetail'
 import MyTrainings from './pages/MyTrainings'
 import Notifications from './pages/Notifications'
 import RegistrationDetail from './pages/RegistrationDetail'
+import Contact from './pages/Contact'
 import { AuthProvider, useAuth } from './hooks/useAuth'
 
 function AppRoutes() {
@@ -46,6 +47,7 @@ function AppRoutes() {
       <Route path="/registrations/:id" element={isAuthenticated ? <RegistrationDetail /> : <Navigate to="/login" />} />
       <Route path="/profile" element={isAuthenticated ? <Profile /> : <Navigate to="/login" />} />
       <Route path="/notifications" element={isAuthenticated ? <Notifications /> : <Navigate to="/login" />} />
+      <Route path="/contact" element={<Contact />} />
     </Routes>
   )
 }

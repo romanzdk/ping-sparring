@@ -27,6 +27,7 @@ router = APIRouter()
 async def get_trainings(
     district_id: Optional[int] = Query(None),
     region_id: Optional[int] = Query(None),
+    sport: Optional[str] = Query(None),
     elo_min: Optional[int] = Query(None),
     elo_max: Optional[int] = Query(None),
     day_of_week: Optional[int] = Query(None),
@@ -40,6 +41,8 @@ async def get_trainings(
     query = select(Training).where(Training.is_active == is_active)
     if district_id:
         query = query.where(Training.district_id == district_id)
+    if sport:
+        query = query.where(Training.sport == sport)
     if region_id:
         query = query.where(Training.region_id == region_id)
     if elo_min:
@@ -75,6 +78,7 @@ async def get_trainings(
         return [
             TrainingPublicResponse(
                 id=t.id,
+                sport=t.sport,
                 title=t.title,
                 description=t.description,
                 schedule_type=t.schedule_type.value
@@ -191,6 +195,7 @@ async def create_training(
     )
     training = Training(
         club_id=club.id,
+        sport=training_data.sport or "stolni_tenis",
         title=training_data.title or "",
         description=training_data.description,
         schedule_type=schedule_type,
@@ -261,6 +266,7 @@ async def update_training(
         training.region_id = district.region_id
 
     # Update fields
+    training.sport = training_data.sport or "stolni_tenis"
     training.title = training_data.title or ""
     training.description = training_data.description
     training.schedule_type = (

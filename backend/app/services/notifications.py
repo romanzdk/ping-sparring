@@ -18,6 +18,27 @@ from app.models.registration import Registration
 from app.models.training_request import TrainingRequest
 
 
+def _contact_recipient() -> str:
+    return (settings.CONTACT_EMAIL or settings.SMTP_FROM_EMAIL).strip()
+
+
+async def send_contact_form_email(sender_name: str | None, sender_email: str, subject: str | None, message: str):
+    """Odešle e-mail z kontaktního formuláře na CONTACT_EMAIL (nebo SMTP_FROM_EMAIL)."""
+    to_email = _contact_recipient()
+    email_subject = subject.strip() if subject and subject.strip() else "Zpráva z kontaktního formuláře"
+    body_lines = [
+        "Zpráva z kontaktního formuláře (Můj trénink).",
+        "",
+        "Od: " + (sender_name.strip() if sender_name and sender_name.strip() else "(neuvedeno)"),
+        "E-mail: " + sender_email,
+        "",
+        "--- Zpráva ---",
+        message.strip(),
+    ]
+    body = "\n".join(body_lines)
+    await send_email(to_email, email_subject, body)
+
+
 async def send_email(to_email: str, subject: str, body: str):
     """Send an email via SMTP."""
     if not settings.SMTP_USER or not settings.SMTP_PASSWORD:
@@ -306,7 +327,7 @@ async def send_training_request_response_notification(
 Více informací: {settings.FRONTEND_URL}{action_url}
 
 S pozdravem,
-Tým Ping Sparring
+Tým Můj trénink
 """
     else:
         email_body = f"""
@@ -326,6 +347,6 @@ Klub má zájem o spolupráci. Můžete se podívat na jejich nabídku trénink�
 Více informací: {settings.FRONTEND_URL}{action_url}
 
 S pozdravem,
-Tým Ping Sparring
+Tým Můj trénink
 """
     await send_email(player_user.email, title, email_body)

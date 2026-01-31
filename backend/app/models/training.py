@@ -38,6 +38,7 @@ class Training(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     club_id = Column(Integer, ForeignKey("clubs.id"), nullable=False)
+    sport = Column(String, nullable=False, default="stolni_tenis")
     title = Column(String, nullable=False)
     description = Column(Text, nullable=True)
     day_of_week = Column(Integer, nullable=False)  # 0=Monday, 6=Sunday

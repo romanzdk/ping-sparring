@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '../services/api'
 import Layout from '../components/Layout'
 import { Calendar, Target, Plus, ArrowLeft, MapPin, Phone } from 'lucide-react'
+import { SPORTS } from '../types'
 
 export default function TrainingRequestCreate() {
   const navigate = useNavigate()
@@ -11,6 +12,7 @@ export default function TrainingRequestCreate() {
   const [error, setError] = useState('')
 
   const [formData, setFormData] = useState({
+    sport: 'stolni_tenis',
     title: '',
     description: '',
     preferred_days: [] as number[],
@@ -103,6 +105,25 @@ export default function TrainingRequestCreate() {
 
           <p className="text-sm text-gray-600 mb-6">Pole označená <span className="text-red-600 font-semibold">*</span> jsou povinná, ostatní jsou nepovinná.</p>
           <form onSubmit={handleSubmit} className="space-y-8">
+            <section className="space-y-4">
+              <h2 className="text-xl font-bold text-gray-900 flex items-center">
+                <Target className="w-5 h-5 mr-2 text-green-500" />
+                Sport
+              </h2>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Sport <span className="text-red-600">*</span></label>
+                <select
+                  required
+                  value={formData.sport}
+                  onChange={e => setFormData({ ...formData, sport: e.target.value })}
+                  className="input"
+                >
+                  {SPORTS.map(s => (
+                    <option key={s.value} value={s.value}>{s.emoji} {s.label}</option>
+                  ))}
+                </select>
+              </div>
+            </section>
             <section className="space-y-4">
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Název poptávky <span className="text-red-600">*</span></label>

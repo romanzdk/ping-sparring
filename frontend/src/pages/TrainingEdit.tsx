@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import api from '../services/api'
 import Layout from '../components/Layout'
 import { Calendar, Clock, MapPin, Target, Save, ArrowLeft, Info, DollarSign, Trash2, HelpCircle } from 'lucide-react'
+import { SPORTS } from '../types'
 
 function timeToInputValue(t: string | undefined): string {
   if (!t) return '18:00'
@@ -21,6 +22,7 @@ export default function TrainingEdit() {
   const [error, setError] = useState('')
 
   const [formData, setFormData] = useState({
+    sport: 'stolni_tenis',
     title: '',
     description: '',
     schedule_type: 'recurring' as 'recurring' | 'one_time',
@@ -56,6 +58,7 @@ export default function TrainingEdit() {
         .then(res => {
           const t = res.data
           setFormData({
+            sport: (t as { sport?: string }).sport || 'stolni_tenis',
             title: t.title || '',
             description: t.description || '',
             schedule_type: (t as { schedule_type?: string }).schedule_type === 'one_time' ? 'one_time' : 'recurring',
@@ -92,6 +95,7 @@ export default function TrainingEdit() {
     try {
       const data = {
         ...formData,
+        sport: formData.sport,
         title: formData.title || null,
         schedule_type: formData.schedule_type,
         district_id: parseInt(formData.district_id),
@@ -181,6 +185,25 @@ export default function TrainingEdit() {
           <form onSubmit={handleSubmit} className="space-y-8">
             <section className="space-y-4">
               <h2 className="text-xl font-bold text-gray-900 flex items-center">
+                <Target className="w-5 h-5 mr-2 text-green-500" />
+                Sport
+              </h2>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Sport <span className="text-red-600">*</span></label>
+                <select
+                  required
+                  value={formData.sport}
+                  onChange={e => setFormData({ ...formData, sport: e.target.value })}
+                  className="input"
+                >
+                  {SPORTS.map(s => (
+                    <option key={s.value} value={s.value}>{s.emoji} {s.label}</option>
+                  ))}
+                </select>
+              </div>
+            </section>
+            <section className="space-y-4">
+              <h2 className="text-xl font-bold text-gray-900 flex items-center">
                 <Calendar className="w-5 h-5 mr-2 text-indigo-500" />
                 Typ tréninku
               </h2>
@@ -250,7 +273,7 @@ export default function TrainingEdit() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Lokalita (název herny) <span className="text-red-600">*</span></label>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Lokalita (název místa) <span className="text-red-600">*</span></label>
                   <input
                     type="text"
                     required
