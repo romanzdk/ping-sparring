@@ -4,34 +4,88 @@ import { useAuth } from '../hooks/useAuth'
 import api from '../services/api'
 import { Training } from '../types'
 import Layout from '../components/Layout'
-import { Calendar, MapPin, Users, TrendingUp, Clock, Zap, Target } from 'lucide-react'
+import { Calendar, MapPin, Users, TrendingUp, Clock, Zap, Target, Info, ChevronDown, ChevronUp } from 'lucide-react'
 import { formatTrainingDateLabel, getTrainingDayShort } from '../utils/trainingDate'
+
+interface RecommendationItem {
+  training: Training & { session_date?: string }
+  elo_score: number
+  region_score: number
+  reliability_score: number
+  time_score: number
+  total_score: number
+}
+
+interface RegistrationDetail {
+  id: number
+  training_session_id: number
+  status: string
+  training_id: number
+  training_title: string
+  session_date: string
+}
+
+interface TrainingRequestItem {
+  id: number
+  title: string
+  status: string
+}
 
 export default function Dashboard() {
   const { user } = useAuth()
   const [trainings, setTrainings] = useState<Training[]>([])
+  const [recommendations, setRecommendations] = useState<RecommendationItem[]>([])
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({
     upcoming: 0,
     total: 0,
+    registeredCount: 0,
+    activeRequestsCount: 0,
   })
+  const [registrationsDetail, setRegistrationsDetail] = useState<RegistrationDetail[]>([])
+  const [activeRequests, setActiveRequests] = useState<TrainingRequestItem[]>([])
+  const [expandedRegistrations, setExpandedRegistrations] = useState(false)
+  const [expandedRequests, setExpandedRequests] = useState(false)
 
   useEffect(() => {
     if (!user) return
 
     if (user.role === 'player') {
-      // Get recommended trainings
-      api.get('/api/v1/matching/recommendations?limit=6')
-        .then(res => {
-          const recs = res.data.map((r: any) => r.training)
-          setTrainings(recs)
-          setStats({ upcoming: recs.length, total: recs.length })
+      const loadPlayerData = async () => {
+        try {
+          const [recRes, regRes, regDetailRes, reqRes] = await Promise.all([
+            api.get('/api/v1/matching/recommendations?limit=6'),
+            api.get('/api/v1/registrations/me').catch(() => ({ data: [] })),
+            api.get('/api/v1/registrations/me/detail').catch(() => ({ data: [] })),
+            api.get('/api/v1/training-requests/').catch(() => ({ data: [] })),
+          ])
+          const recs: RecommendationItem[] = recRes.data
+          setRecommendations(recs)
+          setTrainings(recs.map((r: RecommendationItem) => r.training))
+          const registrations = regRes.data || []
+          const registeredCount = registrations.filter(
+            (r: { status: string }) => r.status === 'approved' || r.status === 'pending'
+          ).length
+          const detailList: RegistrationDetail[] = (regDetailRes.data || []).filter(
+            (r: RegistrationDetail) => r.status === 'approved' || r.status === 'pending'
+          )
+          setRegistrationsDetail(detailList)
+          const requests = reqRes.data || []
+          const openRequests = requests.filter((r: { status: string }) => r.status === 'open')
+          setActiveRequests(openRequests)
+          setStats({
+            upcoming: recs.length,
+            total: recs.length,
+            registeredCount,
+            activeRequestsCount: openRequests.length,
+          })
+        } catch (err) {
+          console.error('Error loading player dashboard:', err)
+        } finally {
           setLoading(false)
-        })
-        .catch((err) => {
-          console.error('Error loading recommendations:', err)
-          setLoading(false)
-        })
+        }
+      }
+      loadPlayerData()
     } else if (user.role === 'club') {
       // Get my trainings for clubs (from /me/trainings endpoint)
       api.get('/api/v1/users/me/trainings')
@@ -64,40 +118,126 @@ export default function Dashboard() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-slide-up">
-          <div className="card-hover group">
-            <div className="flex items-center">
-              <div className="p-4 bg-teal-600 rounded-2xl shadow-sm group-hover:bg-teal-700 transition-colors">
-                <Calendar className="w-7 h-7 text-white" />
+        <div className={`grid grid-cols-1 gap-6 animate-slide-up ${user?.role === 'player' ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}>
+          {user?.role === 'player' ? (
+            <>
+              <div className="card-hover">
+                <button
+                  type="button"
+                  onClick={() => setExpandedRegistrations((v) => !v)}
+                  className="w-full flex items-center justify-between text-left"
+                >
+                  <div className="flex items-center">
+                    <div className="p-4 bg-teal-600 rounded-2xl shadow-sm">
+                      <Calendar className="w-7 h-7 text-white" />
+                    </div>
+                    <div className="ml-5">
+                      <p className="text-sm font-bold text-gray-500 uppercase tracking-wide">Přihlášené tréninky</p>
+                      <p className="text-3xl sm:text-4xl font-bold text-teal-600">{stats.registeredCount}</p>
+                    </div>
+                  </div>
+                  <span className="text-gray-400 p-2">
+                    {expandedRegistrations ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                  </span>
+                </button>
+                {expandedRegistrations && registrationsDetail.length > 0 && (
+                  <ul className="mt-4 pt-4 border-t border-gray-200 space-y-2">
+                    {registrationsDetail.map((r) => (
+                      <li key={r.id}>
+                        <Link
+                          to={`/registrations/${r.id}`}
+                          className="flex items-center gap-2 text-teal-600 hover:text-teal-800 font-medium"
+                        >
+                          <span className="truncate">{r.training_title}</span>
+                          <span className="text-gray-500 text-sm">
+                            {new Date(r.session_date).toLocaleDateString('cs-CZ')}
+                          </span>
+                          <span className="ml-auto">→</span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {expandedRegistrations && registrationsDetail.length === 0 && (
+                  <p className="mt-4 pt-4 border-t border-gray-200 text-gray-500 text-sm">Žádné přihlášené tréninky</p>
+                )}
               </div>
-              <div className="ml-5">
-                <p className="text-sm font-bold text-gray-500 uppercase tracking-wide">Nadcházející</p>
-                <p className="text-3xl sm:text-4xl font-bold text-teal-600">{stats.upcoming}</p>
+              <div className="card-hover">
+                <button
+                  type="button"
+                  onClick={() => setExpandedRequests((v) => !v)}
+                  className="w-full flex items-center justify-between text-left"
+                >
+                  <div className="flex items-center">
+                    <div className="p-4 bg-emerald-600 rounded-2xl shadow-sm">
+                      <Target className="w-7 h-7 text-white" />
+                    </div>
+                    <div className="ml-5">
+                      <p className="text-sm font-bold text-gray-500 uppercase tracking-wide">Aktivní poptávky</p>
+                      <p className="text-3xl sm:text-4xl font-bold text-emerald-600">{stats.activeRequestsCount}</p>
+                    </div>
+                  </div>
+                  <span className="text-gray-400 p-2">
+                    {expandedRequests ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                  </span>
+                </button>
+                {expandedRequests && activeRequests.length > 0 && (
+                  <ul className="mt-4 pt-4 border-t border-gray-200 space-y-2">
+                    {activeRequests.map((r) => (
+                      <li key={r.id}>
+                        <Link
+                          to={`/training-requests/${r.id}`}
+                          className="flex items-center gap-2 text-emerald-600 hover:text-emerald-800 font-medium"
+                        >
+                          <span className="truncate">{r.title}</span>
+                          <span className="ml-auto">→</span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {expandedRequests && activeRequests.length === 0 && (
+                  <p className="mt-4 pt-4 border-t border-gray-200 text-gray-500 text-sm">Žádné aktivní poptávky</p>
+                )}
               </div>
-            </div>
-          </div>
-          <div className="card-hover group">
-            <div className="flex items-center">
-              <div className="p-4 bg-emerald-600 rounded-2xl shadow-sm group-hover:bg-emerald-700 transition-colors">
-                <Users className="w-7 h-7 text-white" />
+            </>
+          ) : (
+            <>
+              <div className="card-hover group">
+                <div className="flex items-center">
+                  <div className="p-4 bg-teal-600 rounded-2xl shadow-sm group-hover:bg-teal-700 transition-colors">
+                    <Calendar className="w-7 h-7 text-white" />
+                  </div>
+                  <div className="ml-5">
+                    <p className="text-sm font-bold text-gray-500 uppercase tracking-wide">Nadcházející</p>
+                    <p className="text-3xl sm:text-4xl font-bold text-teal-600">{stats.upcoming}</p>
+                  </div>
+                </div>
               </div>
-              <div className="ml-5">
-                <p className="text-sm font-bold text-gray-500 uppercase tracking-wide">Celkem</p>
-                <p className="text-3xl sm:text-4xl font-bold text-emerald-600">{stats.total}</p>
+              <div className="card-hover group">
+                <div className="flex items-center">
+                  <div className="p-4 bg-emerald-600 rounded-2xl shadow-sm group-hover:bg-emerald-700 transition-colors">
+                    <Users className="w-7 h-7 text-white" />
+                  </div>
+                  <div className="ml-5">
+                    <p className="text-sm font-bold text-gray-500 uppercase tracking-wide">Celkem</p>
+                    <p className="text-3xl sm:text-4xl font-bold text-emerald-600">{stats.total}</p>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-          <div className="card-hover group">
-            <div className="flex items-center">
-              <div className="p-4 bg-amber-500 rounded-2xl shadow-sm group-hover:bg-amber-600 transition-colors">
-                <TrendingUp className="w-7 h-7 text-white" />
+              <div className="card-hover group">
+                <div className="flex items-center">
+                  <div className="p-4 bg-amber-500 rounded-2xl shadow-sm group-hover:bg-amber-600 transition-colors">
+                    <TrendingUp className="w-7 h-7 text-white" />
+                  </div>
+                  <div className="ml-5">
+                    <p className="text-sm font-bold text-gray-500 uppercase tracking-wide">Hodnocení ELO</p>
+                    <p className="text-3xl sm:text-4xl font-bold text-amber-600">-</p>
+                  </div>
+                </div>
               </div>
-              <div className="ml-5">
-                <p className="text-sm font-bold text-gray-500 uppercase tracking-wide">Hodnocení ELO</p>
-                <p className="text-3xl sm:text-4xl font-bold text-amber-600">-</p>
-              </div>
-            </div>
-          </div>
+            </>
+          )}
         </div>
 
         <div className="animate-slide-up" style={{ animationDelay: '0.2s' }}>
@@ -107,6 +247,19 @@ export default function Dashboard() {
               <span className="bg-gradient-to-r from-gray-700 to-gray-900 bg-clip-text text-transparent">
                 {user?.role === 'player' ? 'Doporučené tréninky' : 'Moje tréninky'}
               </span>
+              {user?.role === 'player' && (
+                <span className="relative inline-flex items-center group/info">
+                  <span className="text-gray-400 hover:text-teal-600 transition-colors cursor-help">
+                    <Info className="w-5 h-5" aria-hidden />
+                  </span>
+                  <span
+                    role="tooltip"
+                    className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-3 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg shadow-lg opacity-0 invisible group-hover/info:opacity-100 group-hover/info:visible transition-all duration-150 z-20 w-72 text-center pointer-events-none"
+                  >
+                    Tréninky se doporučují podle shody ELO, lokality (okres/region), spolehlivosti a časové dostupnosti.
+                  </span>
+                </span>
+              )}
             </h2>
             {user?.role === 'player' ? (
               <Link to="/trainings" className="btn btn-secondary group">
@@ -150,67 +303,70 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {trainings.map((training, index) => (
-                <Link
-                  key={training.id}
-                  to={`/trainings/${training.id}`}
-                  className="card-hover group animate-scale-in"
-                  style={{ animationDelay: `${index * 0.1}s` }}
-                >
-                  <div className="absolute top-4 right-4 w-14 h-14 bg-teal-600 rounded-2xl flex items-center justify-center text-white font-bold text-sm shadow-sm" title={formatTrainingDateLabel(training)}>
-                    {getTrainingDayShort(training)}
-                  </div>
+              {(user?.role === 'player' ? recommendations : trainings.map((t) => ({ training: t }))).map((item: { training: Training }, index: number) => {
+                const training = item.training
+                return (
+                  <Link
+                    key={training.id}
+                    to={`/trainings/${training.id}`}
+                    className="card-hover group animate-scale-in relative"
+                    style={{ animationDelay: `${index * 0.1}s` }}
+                  >
+                    <div className="absolute top-4 right-4 w-14 h-14 bg-teal-600 rounded-2xl flex items-center justify-center text-white font-bold text-sm shadow-sm" title={formatTrainingDateLabel(training)}>
+                      {getTrainingDayShort(training)}
+                    </div>
 
-                  <div className="flex items-center gap-2 mb-2 pr-16 flex-wrap">
-                    <h3 className="text-lg sm:text-xl font-bold text-gray-900 group-hover:text-teal-600 transition-colors">{training.title}</h3>
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded ${(training.schedule_type ?? 'recurring') === 'one_time' ? 'bg-amber-100 text-amber-800' : 'bg-teal-100 text-teal-800'}`}>
-                      {(training.schedule_type ?? 'recurring') === 'one_time' ? 'Jednorázový' : 'Pravidelný'}
-                    </span>
-                  </div>
-                  {training.description && (
-                    <p className="text-gray-600 text-sm mb-4 line-clamp-2 leading-relaxed">{training.description}</p>
-                  )}
-
-                  <div className="space-y-3">
-                    <div className="flex items-center text-sm font-semibold text-gray-700">
-                      <div className="p-2 bg-teal-100 rounded-lg mr-3">
-                        <Calendar className="w-4 h-4 text-teal-600" />
-                      </div>
-                      {formatTrainingDateLabel(training)}
-                    </div>
-                    <div className="flex items-center text-sm font-semibold text-gray-700">
-                      <div className="p-2 bg-gray-100 rounded-lg mr-3">
-                        <Clock className="w-4 h-4 text-gray-600" />
-                      </div>
-                      {training.start_time} - {training.end_time}
-                    </div>
-                    <div className="flex items-center text-sm font-semibold text-gray-700">
-                      <div className="p-2 bg-gray-100 rounded-lg mr-3">
-                        <MapPin className="w-4 h-4 text-gray-600" />
-                      </div>
-                      <span className="truncate">{training.location}</span>
-                    </div>
-                    <div className="flex items-center text-sm font-semibold text-gray-700">
-                      <div className="p-2 bg-gray-100 rounded-lg mr-3">
-                        <Target className="w-4 h-4 text-gray-600" />
-                      </div>
-                      ELO: {training.elo_min} - {training.elo_max}
-                    </div>
-                  </div>
-
-                  <div className="mt-5 pt-4 border-t border-gray-200/50">
-                    <div className="flex items-center justify-between">
-                      <span className="badge badge-info flex items-center gap-1">
-                        💺 Kapacita: {training.capacity}
-                      </span>
-                      <span className="text-teal-600 font-bold text-sm group-hover:translate-x-1 transition-transform flex items-center">
-                        Detail
-                        <span className="ml-1">→</span>
+                    <div className="flex items-center gap-2 mb-2 pr-16 flex-wrap">
+                      <h3 className="text-lg sm:text-xl font-bold text-gray-900 group-hover:text-teal-600 transition-colors">{training.title}</h3>
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded ${(training.schedule_type ?? 'recurring') === 'one_time' ? 'bg-amber-100 text-amber-800' : 'bg-teal-100 text-teal-800'}`}>
+                        {(training.schedule_type ?? 'recurring') === 'one_time' ? 'Jednorázový' : 'Pravidelný'}
                       </span>
                     </div>
-                  </div>
-                </Link>
-              ))}
+                    {training.description && (
+                      <p className="text-gray-600 text-sm mb-4 line-clamp-2 leading-relaxed">{training.description}</p>
+                    )}
+
+                    <div className="space-y-3">
+                      <div className="flex items-center text-sm font-semibold text-gray-700">
+                        <div className="p-2 bg-teal-100 rounded-lg mr-3">
+                          <Calendar className="w-4 h-4 text-teal-600" />
+                        </div>
+                        {formatTrainingDateLabel(training)}
+                      </div>
+                      <div className="flex items-center text-sm font-semibold text-gray-700">
+                        <div className="p-2 bg-gray-100 rounded-lg mr-3">
+                          <Clock className="w-4 h-4 text-gray-600" />
+                        </div>
+                        {training.start_time} - {training.end_time}
+                      </div>
+                      <div className="flex items-center text-sm font-semibold text-gray-700">
+                        <div className="p-2 bg-gray-100 rounded-lg mr-3">
+                          <MapPin className="w-4 h-4 text-gray-600" />
+                        </div>
+                        <span className="truncate">{training.location}</span>
+                      </div>
+                      <div className="flex items-center text-sm font-semibold text-gray-700">
+                        <div className="p-2 bg-gray-100 rounded-lg mr-3">
+                          <Target className="w-4 h-4 text-gray-600" />
+                        </div>
+                        ELO: {training.elo_min} - {training.elo_max}
+                      </div>
+                    </div>
+
+                    <div className="mt-5 pt-4 border-t border-gray-200/50">
+                      <div className="flex items-center justify-between">
+                        <span className="badge badge-info flex items-center gap-1">
+                          💺 Kapacita: {training.capacity}
+                        </span>
+                        <span className="text-teal-600 font-bold text-sm group-hover:translate-x-1 transition-transform flex items-center">
+                          Detail
+                          <span className="ml-1">→</span>
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                )
+              })}
             </div>
           )}
         </div>

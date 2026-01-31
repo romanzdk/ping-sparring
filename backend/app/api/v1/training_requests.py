@@ -1,17 +1,8 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
-from pydantic import BaseModel
-
+from sqlalchemy import select, and_, func
 from app.core.database import get_db
-
-
-class RespondToRequestBody(BaseModel):
-    """Optional editable message when club responds to a training request."""
-
-    subject: str | None = None
-    message: str | None = None
 
 
 from app.api.dependencies import get_current_user, get_optional_user
@@ -23,9 +14,10 @@ from app.schemas.training_request import (
     TrainingRequestUpdate,
     TrainingRequestPublicResponse,
 )
-from app.services.notifications import send_training_request_response_notification
 
 router = APIRouter()
+
+MAX_ACTIVE_REQUESTS_PER_PLAYER = 5
 
 
 @router.post("/", response_model=TrainingRequestResponse, status_code=status.HTTP_201_CREATED)
@@ -48,6 +40,21 @@ async def create_training_request(
     if not player:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Player profile not found"
+        )
+
+    # Limit: max 5 active (OPEN) requests per player
+    count_result = await db.execute(
+        select(func.count(TrainingRequest.id)).where(
+            and_(
+                TrainingRequest.player_id == player.id,
+                TrainingRequest.status == TrainingRequestStatus.OPEN,
+            )
+        )
+    )
+    if count_result.scalar_one() >= MAX_ACTIVE_REQUESTS_PER_PLAYER:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Máte již maximální počet aktivních poptávek (5). Pro přidání nové některou smažte.",
         )
 
     # Create request
@@ -261,6 +268,25 @@ async def update_training_request(
 
     # Update fields
     update_data = request_data.model_dump(exclude_unset=True)
+    new_status = update_data.get("status")
+    if new_status is not None and player:
+        status_enum = TrainingRequestStatus(new_status) if isinstance(new_status, str) else new_status
+        if status_enum == TrainingRequestStatus.OPEN and request.status != TrainingRequestStatus.OPEN:
+            # Re-opening: check limit (other OPEN requests only)
+            count_result = await db.execute(
+                select(func.count(TrainingRequest.id)).where(
+                    and_(
+                        TrainingRequest.player_id == player.id,
+                        TrainingRequest.status == TrainingRequestStatus.OPEN,
+                        TrainingRequest.id != request_id,
+                    )
+                )
+            )
+            if count_result.scalar_one() >= MAX_ACTIVE_REQUESTS_PER_PLAYER:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Máte již maximální počet aktivních poptávek (5). Pro znovuotevření některou jinou smažte.",
+                )
     for key, value in update_data.items():
         setattr(request, key, value)
 
@@ -305,64 +331,3 @@ async def delete_training_request(
     await db.commit()
 
     return None
-
-
-@router.post("/{request_id}/respond", status_code=status.HTTP_200_OK)
-async def respond_to_training_request(
-    request_id: int,
-    body: RespondToRequestBody | None = Body(None),
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Respond to a training request by sending email to the player (club only). Optional body: subject, message (editable)."""
-    if current_user.role != UserRole.CLUB:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only clubs can respond to training requests",
-        )
-
-    # Get training request
-    result = await db.execute(select(TrainingRequest).where(TrainingRequest.id == request_id))
-    request = result.scalar_one_or_none()
-
-    if not request:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Training request not found"
-        )
-
-    if request.status != TrainingRequestStatus.OPEN:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Can only respond to open requests"
-        )
-
-    # Get club
-    result = await db.execute(select(Club).where(Club.user_id == current_user.id))
-    club = result.scalar_one_or_none()
-
-    if not club:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Club profile not found")
-
-    # Get player and their user
-    result = await db.execute(select(Player).where(Player.id == request.player_id))
-    player = result.scalar_one_or_none()
-
-    if not player:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Player not found")
-
-    result = await db.execute(select(User).where(User.id == player.user_id))
-    player_user = result.scalar_one_or_none()
-
-    if not player_user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Player user not found")
-
-    # Send notification and email (optionally with club's custom subject/message)
-    await send_training_request_response_notification(
-        player_user,
-        club,
-        request,
-        db,
-        custom_subject=body.subject if body else None,
-        custom_message=body.message if body else None,
-    )
-
-    return {"message": "Email byl úspěšně odeslán hráči"}

@@ -12,31 +12,9 @@ from jinja2 import Template
 
 from app.core.config import settings
 from app.models.notification import Notification, NotificationType
-from app.models.user import User, Club, Player
+from app.models.user import User, Player
 from app.models.training import TrainingSession
 from app.models.registration import Registration
-from app.models.training_request import TrainingRequest
-
-
-def _contact_recipient() -> str:
-    return (settings.CONTACT_EMAIL or settings.SMTP_FROM_EMAIL).strip()
-
-
-async def send_contact_form_email(sender_name: str | None, sender_email: str, subject: str | None, message: str):
-    """Odešle e-mail z kontaktního formuláře na CONTACT_EMAIL (nebo SMTP_FROM_EMAIL)."""
-    to_email = _contact_recipient()
-    email_subject = subject.strip() if subject and subject.strip() else "Zpráva z kontaktního formuláře"
-    body_lines = [
-        "Zpráva z kontaktního formuláře (Můj trénink).",
-        "",
-        "Od: " + (sender_name.strip() if sender_name and sender_name.strip() else "(neuvedeno)"),
-        "E-mail: " + sender_email,
-        "",
-        "--- Zpráva ---",
-        message.strip(),
-    ]
-    body = "\n".join(body_lines)
-    await send_email(to_email, email_subject, body)
 
 
 async def send_email(to_email: str, subject: str, body: str):
@@ -273,80 +251,3 @@ async def send_training_reminders(db: AsyncSession):
 
             if user:
                 await send_training_reminder_notification(user, session, db)
-
-
-async def send_training_request_response_notification(
-    player_user: User,
-    club: Club,
-    training_request: TrainingRequest,
-    db: AsyncSession,
-    custom_subject: str | None = None,
-    custom_message: str | None = None,
-):
-    """Send email to player when club responds to their training request. Optional custom_subject and custom_message (editable by club)."""
-    title = (
-        custom_subject.strip() if custom_subject else None
-    ) or "Reakce na vaši poptávku tréninku"
-
-    # Get club name
-    club_name = club.club_name or "Klub"
-
-    # Get preferred days names
-    days_map = {
-        0: "Pondělí",
-        1: "Úterý",
-        2: "Středa",
-        3: "Čtvrtek",
-        4: "Pátek",
-        5: "Sobota",
-        6: "Neděle",
-    }
-    preferred_days_str = ", ".join(
-        [days_map.get(d, f"Den {d}") for d in training_request.preferred_days]
-    )
-
-    message = f"Klub {club_name} reagoval na vaši poptávku tréninku."
-    action_url = f"/training-requests/{training_request.id}"
-
-    # Create in-app notification
-    await create_notification(
-        player_user.id,
-        NotificationType.REGISTRATION_CONFIRMED,  # Reuse existing type
-        title,
-        message,
-        action_url,
-        db,
-    )
-
-    # Email body: use custom message if provided, otherwise default
-    if custom_message and custom_message.strip():
-        email_body = f"""Dobrý den {player_user.first_name or ""},
-
-{custom_message.strip()}
-
-Více informací: {settings.FRONTEND_URL}{action_url}
-
-S pozdravem,
-Tým Můj trénink
-"""
-    else:
-        email_body = f"""
-Dobrý den {player_user.first_name or ""},
-
-klub {club_name} reagoval na vaši poptávku tréninku:
-
-"{training_request.title}"
-
-Detaily vaší poptávky:
-- Preferované dny: {preferred_days_str}
-- ELO rozsah: {training_request.elo_min} - {training_request.elo_max}
-{f"- Popis: {training_request.description}" if training_request.description else ""}
-
-Klub má zájem o spolupráci. Můžete se podívat na jejich nabídku tréninků nebo je kontaktovat přímo.
-
-Více informací: {settings.FRONTEND_URL}{action_url}
-
-S pozdravem,
-Tým Můj trénink
-"""
-    await send_email(player_user.email, title, email_body)

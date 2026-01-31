@@ -4,7 +4,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api.v1 import (
     auth,
-    contact,
     users,
     trainings,
     registrations,
@@ -40,7 +39,6 @@ app.include_router(regions.router, prefix="/api/v1/regions", tags=["regions"])
 app.include_router(
     training_requests.router, prefix="/api/v1/training-requests", tags=["training-requests"]
 )
-app.include_router(contact.router, prefix="/api/v1/contact", tags=["contact"])
 
 
 @app.get("/")

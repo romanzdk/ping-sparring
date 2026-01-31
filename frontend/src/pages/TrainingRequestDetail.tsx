@@ -30,11 +30,6 @@ export default function TrainingRequestDetail() {
   const [request, setRequest] = useState<TrainingRequest | null>(null)
   const [districts, setDistricts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [responding, setResponding] = useState(false)
-  const [responseSent, setResponseSent] = useState(false)
-  const [showRespondForm, setShowRespondForm] = useState(false)
-  const [respondSubject, setRespondSubject] = useState('Reakce na vaši poptávku tréninku')
-  const [respondMessage, setRespondMessage] = useState('')
 
   useEffect(() => {
     if (id) {
@@ -66,34 +61,7 @@ export default function TrainingRequestDetail() {
       .filter(Boolean)
   }
 
-  const handleRespond = async (e?: React.FormEvent) => {
-    e?.preventDefault()
-    if (!id) return
-
-    setResponding(true)
-    try {
-      await api.post(`/api/v1/training-requests/${id}/respond`, {
-        subject: respondSubject || undefined,
-        message: respondMessage.trim() || undefined
-      })
-      setResponseSent(true)
-      setShowRespondForm(false)
-
-      const notif = document.createElement('div')
-      notif.className = 'fixed top-4 right-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-4 rounded-xl shadow-2xl animate-scale-in z-50'
-      notif.innerHTML = '✓ Email byl úspěšně odeslán hráči!'
-      document.body.appendChild(notif)
-      setTimeout(() => notif.remove(), 3000)
-    } catch (err: any) {
-      const notif = document.createElement('div')
-      notif.className = 'fixed top-4 right-4 bg-gradient-to-r from-red-500 to-pink-600 text-white px-6 py-4 rounded-xl shadow-2xl animate-scale-in z-50'
-      notif.innerHTML = '✗ ' + (err.response?.data?.detail || 'Chyba při odesílání emailu')
-      document.body.appendChild(notif)
-      setTimeout(() => notif.remove(), 3000)
-    } finally {
-      setResponding(false)
-    }
-  }
+  const defaultMailSubject = 'Reakce na vaši poptávku tréninku'
 
   if (loading) {
     return (
@@ -241,62 +209,14 @@ export default function TrainingRequestDetail() {
 
           <div className="mt-8 pt-6 border-t border-gray-200">
             <div className="flex gap-4 flex-wrap">
-              {user?.role === 'club' && request.status === 'open' && !showRespondForm && !responseSent && (
-                <button
-                  onClick={() => setShowRespondForm(true)}
+              {user?.role === 'club' && request.status === 'open' && request.player_email && (
+                <a
+                  href={`mailto:${request.player_email}?subject=${encodeURIComponent(defaultMailSubject)}`}
                   className="btn btn-primary flex items-center"
                 >
                   <Mail className="w-4 h-4 mr-2" />
-                  Reagovat na poptávku
-                </button>
-              )}
-              {user?.role === 'club' && showRespondForm && request.status === 'open' && (
-                <form onSubmit={handleRespond} className="w-full max-w-2xl p-6 bg-gray-50 rounded-xl border-2 border-gray-200 space-y-4">
-                  <p className="font-bold text-gray-900">Upravte zprávu pro hráče (nepovinné)</p>
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">Předmět emailu</label>
-                    <input
-                      type="text"
-                      value={respondSubject}
-                      onChange={e => setRespondSubject(e.target.value)}
-                      className="input w-full"
-                      placeholder="Reakce na vaši poptávku tréninku"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">Text zprávy (prázdné = výchozí text)</label>
-                    <textarea
-                      value={respondMessage}
-                      onChange={e => setRespondMessage(e.target.value)}
-                      className="input w-full min-h-[120px]"
-                      placeholder="Napište vlastní zprávu hráči..."
-                    />
-                  </div>
-                  <div className="flex gap-3">
-                    <button type="submit" disabled={responding} className="btn btn-primary flex items-center">
-                      {responding ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          Odesílání...
-                        </>
-                      ) : (
-                        <>
-                          <Mail className="w-4 h-4 mr-2" />
-                          Odeslat email
-                        </>
-                      )}
-                    </button>
-                    <button type="button" onClick={() => setShowRespondForm(false)} className="btn btn-secondary">
-                      Zrušit
-                    </button>
-                  </div>
-                </form>
-              )}
-              {user?.role === 'club' && responseSent && (
-                <span className="btn btn-secondary flex items-center cursor-default">
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Email odeslán
-                </span>
+                  Napsat hráči
+                </a>
               )}
               {user?.role === 'club' && (
                 <button
@@ -308,11 +228,6 @@ export default function TrainingRequestDetail() {
                 </button>
               )}
             </div>
-            {user?.role === 'club' && !showRespondForm && (
-              <p className="text-sm text-gray-500 mt-4">
-                Kliknutím na „Reagovat na poptávku“ zobrazíte formulář s předmětem a textem emailu, které můžete upravit před odesláním hráči.
-              </p>
-            )}
           </div>
         </div>
       </div>

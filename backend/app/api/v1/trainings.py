@@ -181,6 +181,19 @@ async def create_training(
     if not club:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Club profile not found")
 
+    # Limit: max 5 active offers per club
+    MAX_ACTIVE_TRAININGS_PER_CLUB = 5
+    count_result = await db.execute(
+        select(func.count(Training.id)).where(
+            and_(Training.club_id == club.id, Training.is_active == True)
+        )
+    )
+    if count_result.scalar_one() >= MAX_ACTIVE_TRAININGS_PER_CLUB:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Váš klub má již maximální počet aktivních nabídek (5). Pro přidání nové některou smažte.",
+        )
+
     # Get district to get region_id
     result = await db.execute(select(District).where(District.id == training_data.district_id))
     district = result.scalar_one_or_none()

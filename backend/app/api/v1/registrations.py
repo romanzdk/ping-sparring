@@ -156,6 +156,53 @@ async def get_my_registrations(
     return registrations
 
 
+@router.get("/me/detail", response_model=List[RegistrationDetailResponse])
+async def get_my_registrations_detail(
+    current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
+    """Get current user's registrations with training and session info (for dashboard)."""
+    if current_user.role != UserRole.PLAYER:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Only players have registrations"
+        )
+
+    result = await db.execute(select(Player).where(Player.user_id == current_user.id))
+    player = result.scalar_one_or_none()
+    if not player:
+        return []
+
+    result = await db.execute(
+        select(Registration)
+        .options(selectinload(Registration.training_session))
+        .where(Registration.player_id == player.id)
+    )
+    registrations = result.scalars().all()
+    out = []
+    for reg in registrations:
+        session = reg.training_session
+        if not session:
+            continue
+        tr_res = await db.execute(select(Training).where(Training.id == session.training_id))
+        training = tr_res.scalar_one_or_none()
+        if not training:
+            continue
+        out.append(
+            RegistrationDetailResponse(
+                id=reg.id,
+                player_id=reg.player_id,
+                training_session_id=reg.training_session_id,
+                status=reg.status.value,
+                created_at=reg.created_at,
+                approved_at=reg.approved_at,
+                cancelled_at=reg.cancelled_at,
+                session_date=session.date,
+                training_id=training.id,
+                training_title=training.title,
+            )
+        )
+    return out
+
+
 @router.get("/{registration_id}", response_model=RegistrationDetailResponse)
 async def get_registration(
     registration_id: int,

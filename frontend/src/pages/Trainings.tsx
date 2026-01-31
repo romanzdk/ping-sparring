@@ -243,6 +243,15 @@ export default function Trainings() {
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded ${(training.schedule_type ?? 'recurring') === 'one_time' ? 'bg-amber-100 text-amber-800' : 'bg-teal-100 text-teal-800'}`}>
                       {(training.schedule_type ?? 'recurring') === 'one_time' ? 'Jednorázový' : 'Pravidelný'}
                     </span>
+                    {training.sport && (() => {
+                      const sportDef = SPORTS.find(s => s.value === training.sport)
+                      if (!sportDef) return null
+                      return (
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded bg-gray-100 text-gray-700" title="Druh sportu">
+                          {sportDef.emoji} {sportDef.label}
+                        </span>
+                      )
+                    })()}
                   </div>
                   {training.club_name && (
                     <p className="text-sm font-semibold text-teal-700 mb-1">{training.club_name}</p>
