@@ -5,7 +5,7 @@ import api from '../services/api'
 import { Training } from '../types'
 import Layout from '../components/Layout'
 import { Calendar, MapPin, Users, TrendingUp, Clock, Zap, Target, Info, ChevronDown, ChevronUp } from 'lucide-react'
-import { formatTrainingDateLabel, getTrainingDayShort } from '../utils/trainingDate'
+import { formatTrainingDateLabel, formatTimeNoSeconds, getTrainingDayShort } from '../utils/trainingDate'
 
 interface RecommendationItem {
   training: Training & { session_date?: string }
@@ -337,7 +337,7 @@ export default function Dashboard() {
                         <div className="p-2 bg-gray-100 rounded-lg mr-3">
                           <Clock className="w-4 h-4 text-gray-600" />
                         </div>
-                        {training.start_time} - {training.end_time}
+                        {formatTimeNoSeconds(training.start_time)} - {formatTimeNoSeconds(training.end_time)}
                       </div>
                       <div className="flex items-center text-sm font-semibold text-gray-700">
                         <div className="p-2 bg-gray-100 rounded-lg mr-3">

@@ -10,11 +10,13 @@ from app.api.dependencies import get_current_user
 from app.models.user import User, UserRole, Player, Club
 from app.models.training import Training, TrainingSession, TrainingStatus, ApprovalMode
 from app.models.registration import Registration, RegistrationStatus, WaitlistEntry
+from app.models.region import District
 from app.schemas.registration import (
     RegistrationCreate,
     RegistrationResponse,
     RegistrationDetailResponse,
     RegistrationWithPlayerResponse,
+    RegistrationWithPlayerDetailResponse,
 )
 
 router = APIRouter()
@@ -312,14 +314,14 @@ async def cancel_registration(
 
 @router.get(
     "/trainings/{training_session_id}/registrations",
-    response_model=List[RegistrationWithPlayerResponse],
+    response_model=List[RegistrationWithPlayerDetailResponse],
 )
 async def get_training_registrations(
     training_session_id: int,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get registrations for a training session (club only), with player names."""
+    """Get registrations for a training session (club only), with full player details."""
     if current_user.role != UserRole.CLUB:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -351,23 +353,51 @@ async def get_training_registrations(
     result = await db.execute(
         select(Registration)
         .options(
-            selectinload(Registration.player).selectinload(Player.user),
+            selectinload(Registration.player).options(
+                selectinload(Player.user),
+                selectinload(Player.reputation_score),
+            ),
         )
         .where(Registration.training_session_id == training_session_id)
     )
     registrations = result.scalars().all()
+    district_ids: set[int] = set()
+    for reg in registrations:
+        if reg.player and getattr(reg.player, "primary_districts", None):
+            district_ids.update(reg.player.primary_districts)
+    districts_map: dict[int, str] = {}
+    if district_ids:
+        res = await db.execute(select(District).where(District.id.in_(district_ids)))
+        for d in res.scalars().all():
+            districts_map[d.id] = d.name
     out = []
     for reg in registrations:
         u = reg.player.user if reg.player else None
         name = ""
+        first_name: str | None = None
+        last_name: str | None = None
+        email: str | None = None
         if u:
-            name = " ".join(
-                filter(None, [getattr(u, "first_name", None), getattr(u, "last_name", None)])
-            ).strip()
+            first_name = getattr(u, "first_name", None)
+            last_name = getattr(u, "last_name", None)
+            name = " ".join(filter(None, [first_name, last_name])).strip()
             if not name:
                 name = u.email or ""
+            email = u.email
+        player = reg.player
+        elo = int(getattr(player, "elo", 0) or 0)
+        official_elo = getattr(player, "official_elo", None)
+        primary_district_names = []
+        if player and getattr(player, "primary_districts", None):
+            primary_district_names = [
+                districts_map[did] for did in player.primary_districts if did in districts_map
+            ]
+        rep = player.reputation_score if player and hasattr(player, "reputation_score") else None
+        reliability_score: float | None = None
+        if rep is not None and hasattr(rep, "reliability_score") and rep.reliability_score is not None:
+            reliability_score = float(rep.reliability_score)
         out.append(
-            RegistrationWithPlayerResponse(
+            RegistrationWithPlayerDetailResponse(
                 id=reg.id,
                 player_id=reg.player_id,
                 training_session_id=reg.training_session_id,
@@ -376,6 +406,16 @@ async def get_training_registrations(
                 approved_at=reg.approved_at,
                 cancelled_at=reg.cancelled_at,
                 player_name=name,
+                player_email=email,
+                player_first_name=first_name,
+                player_last_name=last_name,
+                elo=elo,
+                official_elo=official_elo,
+                primary_district_names=primary_district_names,
+                reliability_score=reliability_score,
+                home_address=getattr(player, "home_address", None) if player else None,
+                max_travel_distance=getattr(player, "max_travel_distance", None) if player else None,
+                max_trainings_per_week=getattr(player, "max_trainings_per_week", None) if player else None,
             )
         )
     return out

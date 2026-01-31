@@ -183,7 +183,7 @@ export default function TrainingRequestEdit() {
                   value={formData.description}
                   onChange={e => setFormData({ ...formData, description: e.target.value })}
                   className="input min-h-[100px]"
-                  placeholder="Popište, co hledáte..."
+                  placeholder="Popište, co hledáte, kde/co hrajete, jaký styl ..."
                 />
               </div>
             </section>

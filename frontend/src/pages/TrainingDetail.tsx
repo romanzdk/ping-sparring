@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import api from '../services/api'
-import { Training, TrainingSession, Registration, RegistrationWithPlayer } from '../types'
+import { Training, TrainingSession, Registration, RegistrationWithPlayerDetail } from '../types'
 import Layout from '../components/Layout'
-import { Calendar, MapPin, Users, Clock, ArrowLeft, CheckCircle, XCircle, Target, Zap, DollarSign, Edit2, Trash2, List, Mail, Phone } from 'lucide-react'
+import { Calendar, MapPin, Users, Clock, ArrowLeft, CheckCircle, XCircle, Target, Zap, DollarSign, Edit2, Trash2, List, Mail, Phone, ChevronDown, ChevronRight, Award, Shield } from 'lucide-react'
 import { format } from 'date-fns'
 import { cs } from 'date-fns/locale'
-import { formatTrainingDateLabel, getTrainingDayShort } from '../utils/trainingDate'
+import { formatTrainingDateLabel, formatTimeNoSeconds, getTrainingDayShort } from '../utils/trainingDate'
 
 export default function TrainingDetail() {
   const { id } = useParams()
@@ -16,7 +16,8 @@ export default function TrainingDetail() {
   const [training, setTraining] = useState<Training | null>(null)
   const [sessions, setSessions] = useState<TrainingSession[]>([])
   const [registrations, setRegistrations] = useState<Map<number, Registration>>(new Map())
-  const [sessionRegistrations, setSessionRegistrations] = useState<Map<number, RegistrationWithPlayer[]>>(new Map())
+  const [sessionRegistrations, setSessionRegistrations] = useState<Map<number, RegistrationWithPlayerDetail[]>>(new Map())
+  const [expandedAttendeeIds, setExpandedAttendeeIds] = useState<Set<number>>(new Set())
   const [loading, setLoading] = useState(true)
   const [registering, setRegistering] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -54,7 +55,7 @@ export default function TrainingDetail() {
       }
       // Load registrations per session for club (who signed up)
       if (user?.role === 'club' && sessionsRes.data.length > 0) {
-        const regMap = new Map<number, RegistrationWithPlayer[]>()
+        const regMap = new Map<number, RegistrationWithPlayerDetail[]>()
         await Promise.all(
           sessionsRes.data.map(async (s: TrainingSession) => {
             try {
@@ -235,7 +236,7 @@ export default function TrainingDetail() {
                 </div>
                 <div>
                   <p className="font-bold text-gray-900 text-lg">Čas</p>
-                  <p className="text-gray-600 font-medium">{training.start_time} - {training.end_time}</p>
+                  <p className="text-gray-600 font-medium">{formatTimeNoSeconds(training.start_time)} - {formatTimeNoSeconds(training.end_time)}</p>
                 </div>
               </div>
               <div className="flex items-start group">
@@ -391,14 +392,102 @@ export default function TrainingDetail() {
                         </div>
                         {isClub && sessionRegs.length > 0 && (
                           <div className="mt-3 pl-2 border-l-2 border-teal-200">
-                            <p className="text-sm font-bold text-gray-700 mb-1">Přihlášení:</p>
-                            <ul className="space-y-1">
-                              {sessionRegs.map((r) => (
-                                <li key={r.id} className="flex items-center gap-2 flex-wrap text-sm">
-                                  <span className="font-medium text-gray-900">{(r as RegistrationWithPlayer).player_name || `Hráč #${r.player_id}`}</span>
-                                  {getStatusBadge(String(r.status))}
-                                </li>
-                              ))}
+                            <p className="text-sm font-bold text-gray-700 mb-2">Přihlášení:</p>
+                            <ul className="space-y-2">
+                              {sessionRegs.map((r) => {
+                                const detail = r as RegistrationWithPlayerDetail
+                                const isExpanded = expandedAttendeeIds.has(r.id)
+                                return (
+                                  <li key={r.id} className="rounded-lg border border-gray-200 bg-gray-50/80 overflow-hidden">
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setExpandedAttendeeIds((prev) => {
+                                          const next = new Set(prev)
+                                          if (next.has(r.id)) next.delete(r.id)
+                                          else next.add(r.id)
+                                          return next
+                                        })
+                                      }
+                                      className="w-full flex items-center gap-2 flex-wrap text-sm text-left px-3 py-2 hover:bg-teal-50/80 transition-colors"
+                                    >
+                                      {isExpanded ? (
+                                        <ChevronDown className="w-4 h-4 flex-shrink-0 text-teal-600" />
+                                      ) : (
+                                        <ChevronRight className="w-4 h-4 flex-shrink-0 text-gray-500" />
+                                      )}
+                                      <span className="font-medium text-gray-900">
+                                        {detail.player_name || `Hráč #${r.player_id}`}
+                                      </span>
+                                      {getStatusBadge(String(r.status))}
+                                    </button>
+                                    {isExpanded && (
+                                      <div className="px-3 pb-3 pt-0 space-y-2 text-sm border-t border-gray-200 bg-white">
+                                        {detail.player_email && (
+                                          <div className="flex items-center gap-2 pt-2">
+                                            <Mail className="w-4 h-4 flex-shrink-0 text-teal-600" />
+                                            <a
+                                              href={`mailto:${detail.player_email}`}
+                                              className="text-teal-700 hover:underline"
+                                            >
+                                              {detail.player_email}
+                                            </a>
+                                          </div>
+                                        )}
+                                        {(detail.elo != null || detail.official_elo != null) && (
+                                          <div className="flex items-center gap-2">
+                                            <Award className="w-4 h-4 flex-shrink-0 text-amber-600" />
+                                            <span className="text-gray-700">
+                                              ELO: {detail.elo ?? '—'}
+                                              {detail.official_elo != null && (
+                                                <span className="text-gray-500 ml-1">
+                                                  (oficiální: {detail.official_elo})
+                                                </span>
+                                              )}
+                                            </span>
+                                          </div>
+                                        )}
+                                        {detail.primary_district_names != null &&
+                                        detail.primary_district_names.length > 0 ? (
+                                          <div className="flex items-center gap-2">
+                                            <MapPin className="w-4 h-4 flex-shrink-0 text-teal-600" />
+                                            <span className="text-gray-700">
+                                              Okresy: {detail.primary_district_names.join(', ')}
+                                            </span>
+                                          </div>
+                                        ) : null}
+                                        {detail.reliability_score != null && (
+                                          <div className="flex items-center gap-2">
+                                            <Shield className="w-4 h-4 flex-shrink-0 text-emerald-600" />
+                                            <span className="text-gray-700">
+                                              Spolehlivost: {Math.round(detail.reliability_score)}/100
+                                            </span>
+                                          </div>
+                                        )}
+                                        {detail.home_address && (
+                                          <div className="flex items-center gap-2">
+                                            <MapPin className="w-4 h-4 flex-shrink-0 text-gray-500" />
+                                            <span className="text-gray-600">{detail.home_address}</span>
+                                          </div>
+                                        )}
+                                        {detail.max_travel_distance != null && (
+                                          <div className="text-gray-600">
+                                            Max. dojezd: {detail.max_travel_distance} km
+                                          </div>
+                                        )}
+                                        {detail.max_trainings_per_week != null && (
+                                          <div className="text-gray-600">
+                                            Max. tréninků týdně: {detail.max_trainings_per_week}
+                                          </div>
+                                        )}
+                                        <div className="text-gray-500 pt-1">
+                                          Přihlášen: {format(new Date(r.created_at), 'd. M. yyyy HH:mm', { locale: cs })}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </li>
+                                )
+                              })}
                             </ul>
                           </div>
                         )}

@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useAuth'
 import { Training } from '../types'
 import Layout from '../components/Layout'
 import { Calendar, MapPin, Users, Clock, Search, Filter, Target, Sparkles, LogIn, UserPlus, Mail, Phone } from 'lucide-react'
-import { getDayName, formatTrainingDateLabel, getTrainingDayShort } from '../utils/trainingDate'
+import { getDayName, formatTrainingDateLabel, formatTimeNoSeconds, getTrainingDayShort } from '../utils/trainingDate'
 import { SPORTS } from '../types'
 
 export default function Trainings() {
@@ -271,7 +271,7 @@ export default function Trainings() {
                       <div className="p-2 bg-gray-100 rounded-lg mr-3">
                         <Clock className="w-4 h-4 text-gray-600" />
                       </div>
-                      {training.start_time} - {training.end_time}
+                      {formatTimeNoSeconds(training.start_time)} - {formatTimeNoSeconds(training.end_time)}
                     </div>
                     <div className="flex items-center text-sm font-semibold text-gray-700">
                       <div className="p-2 bg-gray-100 rounded-lg mr-3">

@@ -11,6 +11,13 @@ export function getDayShort(dayOfWeek: number): string {
   return DAY_SHORT[dayOfWeek] ?? '?'
 }
 
+/** Time string without seconds (HH:mm). Accepts API format HH:mm or HH:mm:ss. */
+export function formatTimeNoSeconds(t: string | undefined): string {
+  if (!t) return ''
+  const s = String(t)
+  return s.length >= 5 ? s.substring(0, 5) : s
+}
+
 /** Day of week 0=Monday..6=Sunday from ISO date string. */
 function dayOfWeekFromDate(isoDate: string): number {
   const d = new Date(isoDate)

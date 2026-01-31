@@ -101,6 +101,20 @@ export interface RegistrationWithPlayer extends Registration {
   player_name: string
 }
 
+/** Full attendee details for club view (registrations per session). */
+export interface RegistrationWithPlayerDetail extends RegistrationWithPlayer {
+  player_email?: string | null
+  player_first_name?: string | null
+  player_last_name?: string | null
+  elo?: number
+  official_elo?: number | null
+  primary_district_names?: string[]
+  reliability_score?: number | null
+  home_address?: string | null
+  max_travel_distance?: number | null
+  max_trainings_per_week?: number | null
+}
+
 export interface Notification {
   id: number
   user_id: number

@@ -416,7 +416,7 @@ export default function TrainingEdit() {
                     value={formData.description}
                     onChange={e => setFormData({ ...formData, description: e.target.value })}
                     className="input min-h-[100px]"
-                    placeholder="Popište průběh tréninku..."
+                    placeholder="Popište průběh tréninku, vybavení, počet účastníků..."
                   />
                 </div>
               </div>

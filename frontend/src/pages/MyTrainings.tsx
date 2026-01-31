@@ -5,7 +5,7 @@ import api from '../services/api'
 import { Training } from '../types'
 import Layout from '../components/Layout'
 import { Calendar, MapPin, Clock, Zap, Target, Plus, ArrowLeft } from 'lucide-react'
-import { formatTrainingDateLabel, getTrainingDayShort } from '../utils/trainingDate'
+import { formatTrainingDateLabel, formatTimeNoSeconds, getTrainingDayShort } from '../utils/trainingDate'
 
 export default function MyTrainings() {
   const { user } = useAuth()
@@ -112,7 +112,7 @@ export default function MyTrainings() {
                     <div className="p-2 bg-gradient-to-br from-purple-100 to-purple-200 rounded-lg mr-3">
                       <Clock className="w-4 h-4 text-purple-600" />
                     </div>
-                    {training.start_time} - {training.end_time}
+                    {formatTimeNoSeconds(training.start_time)} - {formatTimeNoSeconds(training.end_time)}
                   </div>
                   <div className="flex items-center text-sm font-semibold text-gray-700">
                     <div className="p-2 bg-gradient-to-br from-pink-100 to-pink-200 rounded-lg mr-3">

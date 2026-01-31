@@ -37,6 +37,21 @@ class RegistrationWithPlayerResponse(RegistrationResponse):
     player_name: str
 
 
+class RegistrationWithPlayerDetailResponse(RegistrationWithPlayerResponse):
+    """Registration with full player details for club view (attendee details)."""
+
+    player_email: str | None = None
+    player_first_name: str | None = None
+    player_last_name: str | None = None
+    elo: int = 0
+    official_elo: int | None = None
+    primary_district_names: list[str] = []
+    reliability_score: float | None = None
+    home_address: str | None = None
+    max_travel_distance: int | None = None
+    max_trainings_per_week: int | None = None
+
+
 class WaitlistEntryResponse(BaseModel):
     id: int
     player_id: int
