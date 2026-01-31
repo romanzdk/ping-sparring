@@ -1,0 +1,115 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    /* Lepší čitelnost na mobilu, min. velikost pro dotyk */
+    font-size: 16px;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-[#f8fafb] text-gray-900 antialiased;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+}
+
+@layer components {
+
+  /* Tlačítka – min. 44px výška pro snadné klepnutí na mobilu */
+  .btn {
+    @apply min-h-[44px] min-w-[44px] px-5 py-3 rounded-xl font-semibold transition-all duration-200 inline-flex items-center justify-center;
+  }
+
+  .btn-primary {
+    @apply bg-teal-600 text-white hover:bg-teal-700 active:bg-teal-800;
+  }
+
+  .btn-secondary {
+    @apply bg-white text-gray-700 border-2 border-orange-200 hover:border-orange-400 hover:bg-orange-50/80;
+  }
+
+  .btn-danger {
+    @apply bg-red-500 text-white hover:bg-red-600 active:bg-red-700;
+  }
+
+  /* Vstupy – větší pro mobil */
+  .input {
+    @apply w-full min-h-[44px] px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-200 focus:border-teal-500 transition-all duration-200 text-base;
+  }
+
+  /* Karty – čistší, více bílého místa */
+  .card {
+    @apply bg-white rounded-2xl shadow-sm p-6 border border-gray-100 transition-all duration-200;
+  }
+
+  .card-hover {
+    @apply card hover:shadow-md hover:border-teal-100 cursor-pointer relative overflow-hidden;
+  }
+
+  /* Badges */
+  .badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold;
+  }
+
+  .badge-success {
+    @apply bg-emerald-100 text-emerald-700 border border-emerald-200;
+  }
+
+  .badge-warning {
+    @apply bg-amber-100 text-amber-700 border border-amber-200;
+  }
+
+  .badge-danger {
+    @apply bg-red-100 text-red-700 border border-red-200;
+  }
+
+  .badge-info {
+    @apply bg-teal-100 text-teal-700 border border-teal-200;
+  }
+
+  /* Animace – jemnější */
+  @keyframes float {
+
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+
+    50% {
+      transform: translateY(-6px);
+    }
+  }
+
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  @keyframes pulse-soft {
+
+    0%,
+    100% {
+      opacity: 1;
+    }
+
+    50% {
+      opacity: 0.85;
+    }
+  }
+
+  .animate-pulse-soft {
+    animation: pulse-soft 2s ease-in-out infinite;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-teal-600 to-teal-700 bg-clip-text text-transparent;
+  }
+
+  .glass {
+    @apply bg-white/90 backdrop-blur-md border-b border-gray-100;
+  }
+}

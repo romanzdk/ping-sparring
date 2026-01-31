@@ -1,0 +1,230 @@
+# Ping Sparring Marketplace
+
+Systém pro párování stolně-tenisových tréninků - automatizovaná platforma pro domlouvání sparing tréninků mezi hráči a kluby.
+
+## Funkce
+
+- **Automatické párování** - ELO-based matching s regionálním filtrováním
+- **Správa tréninků** - Pravidelné a jednorázové tréninky s kapacitou
+- **Systém přihlášek** - Automatické nebo manuální schvalování
+- **Čekací listina** - Automatické doplnění při uvolnění místa
+- **Reputační systém** - Sledování spolehlivosti hráčů
+- **Notifikace** - Email a in-app notifikace
+- **Regionální filtrování** - Okresy a kraje ČR
+
+## Technologie
+
+- **Backend**: FastAPI (Python 3.11+), SQLAlchemy 2.0 (async), PostgreSQL
+- **Frontend**: React 18, TypeScript, Vite
+- **Autentizace**: JWT tokens
+- **Email**: SMTP
+
+## Požadavky
+
+- Docker a Docker Compose
+- Python 3.11+ (pro lokální vývoj backendu)
+- Node.js 20+ (pro lokální vývoj frontendu)
+- Poetry (pro správu Python závislostí)
+
+## Instalace
+
+### 1. Klonování repozitáře
+
+```bash
+git clone <repository-url>
+cd ping-sparring
+```
+
+### 2. Konfigurace
+
+Zkopírujte `.env.example` na `.env` a upravte hodnoty:
+
+```bash
+cp .env.example .env
+```
+
+Upravte následující hodnoty v `.env`:
+- `DATABASE_URL` - URL PostgreSQL databáze
+- `SECRET_KEY` - Tajný klíč pro JWT (vygenerujte náhodný řetězec)
+- `SMTP_*` - Nastavení email serveru (pro notifikace)
+
+### 3. Spuštění s Docker Compose
+
+```bash
+docker-compose up -d
+```
+
+Tím se spustí:
+- PostgreSQL databáze na portu 5432
+- Backend API na portu 8000
+- Frontend na portu 5173
+
+### 4. Databázové migrace
+
+Po prvním spuštění spusťte migrace:
+
+```bash
+docker-compose exec backend alembic upgrade head
+```
+
+### 5. Seed data (okresy a kraje ČR)
+
+```bash
+docker-compose exec backend python -m app.core.seed
+```
+
+## Lokální vývoj
+
+### Backend
+
+```bash
+cd backend
+
+# Instalace závislostí
+poetry install
+
+# Aktivace virtual environment
+poetry shell
+
+# Spuštění migrací
+alembic upgrade head
+
+# Seed data
+python -m app.core.seed
+
+# Spuštění vývojového serveru
+uvicorn app.main:app --reload
+```
+
+Backend běží na `http://localhost:8000`
+API dokumentace: `http://localhost:8000/docs`
+
+### Frontend
+
+```bash
+cd frontend
+
+# Instalace závislostí
+npm install
+
+# Spuštění vývojového serveru
+npm run dev
+```
+
+Frontend běží na `http://localhost:5173`
+
+## Struktura projektu
+
+```
+ping-sparring/
+├── backend/
+│   ├── app/
+│   │   ├── api/v1/          # API endpointy
+│   │   ├── core/             # Konfigurace, databáze, security
+│   │   ├── models/           # SQLAlchemy modely
+│   │   ├── schemas/          # Pydantic schemas
+│   │   ├── services/         # Business logika
+│   │   └── main.py           # FastAPI aplikace
+│   ├── alembic/              # Databázové migrace
+│   └── pyproject.toml        # Poetry konfigurace
+├── frontend/
+│   ├── src/
+│   │   ├── components/       # React komponenty
+│   │   ├── pages/            # Stránky
+│   │   ├── services/         # API služby
+│   │   ├── hooks/            # React hooks
+│   │   └── types/            # TypeScript typy
+│   └── package.json
+├── docker-compose.yml
+└── README.md
+```
+
+## API Endpoints
+
+### Autentizace
+- `POST /api/v1/auth/register` - Registrace
+- `POST /api/v1/auth/login` - Přihlášení
+- `GET /api/v1/auth/me` - Aktuální uživatel
+
+### Tréninky
+- `GET /api/v1/trainings` - Seznam tréninků (s filtry)
+- `GET /api/v1/trainings/{id}` - Detail tréninku
+- `POST /api/v1/trainings` - Vytvoření tréninku (organizátor)
+- `PUT /api/v1/trainings/{id}` - Úprava tréninku
+- `DELETE /api/v1/trainings/{id}` - Zrušení tréninku
+
+### Přihlášky
+- `POST /api/v1/registrations` - Přihlášení na trénink
+- `DELETE /api/v1/registrations/{id}` - Zrušení přihlášky
+- `POST /api/v1/registrations/{id}/approve` - Schválení (trenér)
+- `POST /api/v1/registrations/{id}/reject` - Zamítnutí (trenér)
+- `POST /api/v1/registrations/waitlist` - Přihlášení na čekací listinu
+
+### Matching
+- `GET /api/v1/matching/recommendations` - Doporučené tréninky pro hráče
+- `GET /api/v1/matching/trainings/{id}/suitable-players` - Vhodní hráči pro trénink
+
+### Notifikace
+- `GET /api/v1/notifications` - Seznam notifikací
+- `PUT /api/v1/notifications/{id}/read` - Označit jako přečtené
+
+Kompletní API dokumentace: `http://localhost:8000/docs`
+
+## Použití
+
+### Registrace hráče
+
+1. Přejděte na `/register`
+2. Vyplňte email, heslo a vyberte roli "Hráč"
+3. Po registraci budete automaticky přihlášeni
+
+### Vytvoření tréninku (organizátor)
+
+1. Přihlaste se jako organizátor
+2. Přejděte na dashboard
+3. Vytvořte nový trénink s parametry:
+   - ELO rozsah
+   - Den a čas
+   - Místo a okres
+   - Kapacita
+   - Režim schvalování
+
+### Přihlášení na trénink (hráč)
+
+1. Prohlédněte si doporučené tréninky na dashboardu
+2. Klikněte na trénink pro zobrazení detailu
+3. Vyberte termín a přihlaste se
+4. U manuálního schvalování čekejte na schválení trenérem
+
+## Testování
+
+### Backend
+
+```bash
+cd backend
+poetry run pytest
+```
+
+### Frontend
+
+```bash
+cd frontend
+npm run lint
+```
+
+## Produkční nasazení
+
+1. Nastavte `ENVIRONMENT=production` v `.env`
+2. Vygenerujte silný `SECRET_KEY`
+3. Nakonfigurujte produkční databázi
+4. Nastavte SMTP pro email notifikace
+5. Build frontendu: `cd frontend && npm run build`
+6. Spusťte s Docker Compose v produkčním režimu
+
+## Licence
+
+MIT
+
+## Kontakt
+
+Pro dotazy a podporu kontaktujte vývojový tým.
