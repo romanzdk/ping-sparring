@@ -20,5 +20,10 @@ COPY . .
 # Expose port
 EXPOSE 8000
 
-# Run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Environment variable to control number of workers
+# Default to 4 workers for production, can be overridden
+ENV UVICORN_WORKERS=4
+
+# Run the application with multiple workers for production
+# Use --workers for production scaling (each worker handles concurrent async requests)
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers ${UVICORN_WORKERS}"]
