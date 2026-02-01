@@ -14,6 +14,13 @@ class Settings(BaseSettings):
     EMAIL_VERIFICATION_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 hours
     
     # Email
+    EMAIL_PROVIDER: str = "resend"  # Options: "resend", "smtp", "console"
+    EMAIL_FROM: str = "Ping Sparring <noreply@pingsparring.cz>"
+
+    # Resend (preferred)
+    RESEND_API_KEY: str | None = None
+
+    # SMTP (fallback)
     SMTP_HOST: str = "smtp.gmail.com"
     SMTP_PORT: int = 587
     SMTP_USER: str | None = None

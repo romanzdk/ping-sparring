@@ -6,81 +6,13 @@ from datetime import datetime, timedelta
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
-import aiosmtplib
-from email.message import EmailMessage
-from jinja2 import Template
 
 from app.core.config import settings
 from app.models.notification import Notification, NotificationType
 from app.models.user import User, Player
 from app.models.training import Training, TrainingSession
 from app.models.registration import Registration, RegistrationStatus
-
-
-async def send_email(to_email: str, subject: str, body: str) -> bool:
-    """Send an email via SMTP.
-
-    Returns True if email was sent successfully, False otherwise.
-
-    Note: Port 587 uses STARTTLS (start_tls=True), Port 465 uses direct TLS (use_tls=True).
-    """
-    import logging
-
-    logger = logging.getLogger(__name__)
-
-    if not settings.SMTP_USER or not settings.SMTP_PASSWORD:
-        # In development, just print to console
-        logger.info("SMTP not configured, printing email to console")
-        print("=" * 60)
-        print("EMAIL (dev mode - not actually sent)")
-        print("To: %s", to_email)
-        print("Subject: %s", subject)
-        print("-" * 60)
-        print(body)
-        print("=" * 60)
-        return True
-
-    message = EmailMessage()
-    message["From"] = settings.SMTP_FROM_EMAIL
-    message["To"] = to_email
-    message["Subject"] = subject
-    message.set_content(body)
-
-    try:
-        # Port 587 uses STARTTLS - connect plain, then upgrade to TLS
-        # Port 465 uses direct TLS connection (use_tls=True)
-        if settings.SMTP_PORT == 465:
-            await aiosmtplib.send(
-                message,
-                hostname=settings.SMTP_HOST,
-                port=settings.SMTP_PORT,
-                username=settings.SMTP_USER,
-                password=settings.SMTP_PASSWORD,
-                use_tls=True,
-                timeout=10,
-            )
-        else:
-            # Port 587 or other - use STARTTLS
-            await aiosmtplib.send(
-                message,
-                hostname=settings.SMTP_HOST,
-                port=settings.SMTP_PORT,
-                username=settings.SMTP_USER,
-                password=settings.SMTP_PASSWORD,
-                start_tls=True,
-                timeout=10,
-            )
-        logger.info("Email sent successfully to %s", to_email)
-        return True
-    except aiosmtplib.SMTPAuthenticationError as e:
-        logger.error("SMTP authentication failed: %s", e)
-        return False
-    except aiosmtplib.SMTPConnectError as e:
-        logger.error("Failed to connect to SMTP server: %s", e)
-        return False
-    except Exception as e:
-        logger.error("Failed to send email to %s: %s", to_email, e)
-        return False
+from app.services.email import send_email
 
 
 async def send_password_reset_email(to_email: str, reset_link: str) -> None:
