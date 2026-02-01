@@ -129,7 +129,7 @@ export default function TrainingCreate() {
             <div>
               <h1 className="text-4xl font-black text-gradient">Nový trénink</h1>
               <p className="text-gray-600 font-medium mt-1">Vytvořte pravidelný trénink pro hráče</p>
-              <p className="text-sm text-amber-600 mt-1">Maximálně 5 aktivních nabídek. Pro více některou smažte.</p>
+              <p className="text-sm text-amber-600 mt-1">Maximálně 2 aktivní nabídky. Pro více některou smažte.</p>
             </div>
           </div>
 

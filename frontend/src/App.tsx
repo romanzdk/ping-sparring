@@ -17,6 +17,7 @@ import Notifications from './pages/Notifications'
 import RegistrationDetail from './pages/RegistrationDetail'
 import Contact from './pages/Contact'
 import { AuthProvider, useAuth } from './hooks/useAuth'
+import { NotificationsProvider } from './hooks/useNotifications'
 
 function AppRoutes() {
   const { isAuthenticated, loading } = useAuth()
@@ -55,7 +56,9 @@ function AppRoutes() {
 function App() {
   return (
     <AuthProvider>
-      <AppRoutes />
+      <NotificationsProvider>
+        <AppRoutes />
+      </NotificationsProvider>
     </AuthProvider>
   )
 }

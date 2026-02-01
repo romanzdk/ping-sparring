@@ -94,7 +94,7 @@ export default function TrainingRequestCreate() {
             <div>
               <h1 className="text-4xl font-black text-gradient">Nová poptávka</h1>
               <p className="text-gray-600 font-medium mt-1">Popište, jaký trénink hledáte</p>
-              <p className="text-sm text-amber-600 mt-1">Maximálně 5 aktivních poptávek. Pro více některou smažte.</p>
+              <p className="text-sm text-amber-600 mt-1">Maximálně 2 aktivní poptávky. Pro více některou smažte.</p>
             </div>
           </div>
 

@@ -18,6 +18,11 @@ from app.schemas.registration import (
     RegistrationWithPlayerResponse,
     RegistrationWithPlayerDetailResponse,
 )
+from app.services.notifications import (
+    send_player_registered_to_club_notification,
+    send_player_unregistered_to_club_notification,
+)
+from app.services.reputation import update_reputation_score
 
 router = APIRouter()
 
@@ -61,7 +66,7 @@ async def create_registration(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Training session is not scheduled"
         )
 
-    # Check if already registered
+    # Check if already registered (excluding cancelled registrations)
     result = await db.execute(
         select(Registration).where(
             and_(
@@ -75,6 +80,26 @@ async def create_registration(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Already registered for this session"
         )
+
+    # Check if player previously cancelled and wants to rejoin
+    result = await db.execute(
+        select(Registration).where(
+            and_(
+                Registration.player_id == player.id,
+                Registration.training_session_id == session.id,
+                Registration.status == RegistrationStatus.CANCELLED,
+            )
+        )
+    )
+    previous_cancelled_registration = result.scalar_one_or_none()
+
+    # If player cancelled before, check if they can rejoin
+    if previous_cancelled_registration:
+        if previous_cancelled_registration.rejoin_count >= 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="You can only rejoin a training session once after cancelling",
+            )
 
     training = session.training
 
@@ -108,33 +133,64 @@ async def create_registration(
     else:
         reg_status = RegistrationStatus.WAITLIST
 
-    # Create registration
-    registration = Registration(
-        player_id=player.id,
-        training_session_id=session.id,
-        status=reg_status,
-        approved_at=datetime.utcnow() if reg_status == RegistrationStatus.APPROVED else None,
-    )
-
-    db.add(registration)
+    # Reuse cancelled registration or create new one
+    if previous_cancelled_registration:
+        # Rejoin: reuse the existing registration
+        registration = previous_cancelled_registration
+        registration.status = reg_status
+        registration.approved_at = (
+            datetime.utcnow() if reg_status == RegistrationStatus.APPROVED else None
+        )
+        registration.cancelled_at = None
+        registration.rejoin_count += 1
+        registration.created_at = datetime.utcnow()  # Update created_at to reflect rejoin time
+    else:
+        # Create new registration
+        registration = Registration(
+            player_id=player.id,
+            training_session_id=session.id,
+            status=reg_status,
+            approved_at=datetime.utcnow() if reg_status == RegistrationStatus.APPROVED else None,
+            rejoin_count=0,
+        )
+        db.add(registration)
 
     # If waitlist, create waitlist entry
     if reg_status == RegistrationStatus.WAITLIST:
-        # Get max priority
+        # Get max position
         result = await db.execute(
-            select(func.max(WaitlistEntry.priority)).where(
+            select(func.max(WaitlistEntry.position)).where(
                 WaitlistEntry.training_session_id == session.id
             )
         )
-        max_priority = result.scalar_one() or 0
+        max_position = result.scalar_one() or 0
 
         waitlist_entry = WaitlistEntry(
-            player_id=player.id, training_session_id=session.id, priority=max_priority + 1
+            player_id=player.id, training_session_id=session.id, position=max_position + 1
         )
         db.add(waitlist_entry)
 
     await db.commit()
     await db.refresh(registration)
+
+    # Notify club about the new registration
+    result = await db.execute(select(Club).where(Club.id == training.club_id))
+    club = result.scalar_one_or_none()
+    if club:
+        player_name = (
+            " ".join(filter(None, [current_user.first_name, current_user.last_name])).strip()
+            or current_user.email
+            or "Hráč"
+        )
+        await send_player_registered_to_club_notification(
+            club_user_id=club.user_id,
+            player_name=player_name,
+            training_title=training.title,
+            training_id=training.id,
+            session_date=session.date,
+            status=reg_status.value,
+            db=db,
+        )
 
     return registration
 
@@ -200,6 +256,7 @@ async def get_my_registrations_detail(
                 session_date=session.date,
                 training_id=training.id,
                 training_title=training.title,
+                training_location=training.location,
             )
         )
     return out
@@ -267,6 +324,7 @@ async def get_registration(
         session_date=session.date,
         training_id=training.id,
         training_title=training.title,
+        training_location=training.location,
     )
 
 
@@ -276,14 +334,17 @@ async def cancel_registration(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Cancel a registration."""
-    result = await db.execute(select(Registration).where(Registration.id == registration_id))
+    """Cancel a registration (player unregisters from training). Club gets notified; reputation is updated by cancellation tier (48h, 24h, 12h)."""
+    result = await db.execute(
+        select(Registration)
+        .options(selectinload(Registration.training_session))
+        .where(Registration.id == registration_id)
+    )
     registration = result.scalar_one_or_none()
 
     if not registration:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Registration not found")
 
-    # Check ownership
     result = await db.execute(select(Player).where(Player.user_id == current_user.id))
     player = result.scalar_one_or_none()
     if not player or registration.player_id != player.id:
@@ -297,18 +358,41 @@ async def cancel_registration(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Registration already cancelled"
         )
 
-    # Store original status before cancelling
     was_approved = registration.status == RegistrationStatus.APPROVED
-
-    # Cancel registration
     registration.status = RegistrationStatus.CANCELLED
     registration.cancelled_at = datetime.utcnow()
 
-    # If approved, check waitlist and promote next player
-    if was_approved:  # Check original status
+    if was_approved:
         await _promote_from_waitlist(registration.training_session_id, db)
 
-    await db.commit()
+    await db.flush()
+
+    session = registration.training_session
+    if session:
+        tr_res = await db.execute(select(Training).where(Training.id == session.training_id))
+        training = tr_res.scalar_one_or_none()
+        if training:
+            club_res = await db.execute(select(Club).where(Club.id == training.club_id))
+            club = club_res.scalar_one_or_none()
+            if club:
+                player_name = (
+                    " ".join(
+                        filter(None, [current_user.first_name, current_user.last_name])
+                    ).strip()
+                    or current_user.email
+                    or "Hráč"
+                )
+                await send_player_unregistered_to_club_notification(
+                    club_user_id=club.user_id,
+                    player_name=player_name,
+                    training_title=training.title,
+                    training_id=training.id,
+                    session_date=session.date,
+                    db=db,
+                )
+
+    await update_reputation_score(player.id, db)
+    await db.refresh(registration)
     return registration
 
 
@@ -394,7 +478,11 @@ async def get_training_registrations(
             ]
         rep = player.reputation_score if player and hasattr(player, "reputation_score") else None
         reliability_score: float | None = None
-        if rep is not None and hasattr(rep, "reliability_score") and rep.reliability_score is not None:
+        if (
+            rep is not None
+            and hasattr(rep, "reliability_score")
+            and rep.reliability_score is not None
+        ):
             reliability_score = float(rep.reliability_score)
         out.append(
             RegistrationWithPlayerDetailResponse(
@@ -414,8 +502,12 @@ async def get_training_registrations(
                 primary_district_names=primary_district_names,
                 reliability_score=reliability_score,
                 home_address=getattr(player, "home_address", None) if player else None,
-                max_travel_distance=getattr(player, "max_travel_distance", None) if player else None,
-                max_trainings_per_week=getattr(player, "max_trainings_per_week", None) if player else None,
+                max_travel_distance=getattr(player, "max_travel_distance", None)
+                if player
+                else None,
+                max_trainings_per_week=getattr(player, "max_trainings_per_week", None)
+                if player
+                else None,
             )
         )
     return out
@@ -568,7 +660,7 @@ async def _promote_from_waitlist(training_session_id: int, db: AsyncSession):
     result = await db.execute(
         select(WaitlistEntry)
         .where(WaitlistEntry.training_session_id == training_session_id)
-        .order_by(WaitlistEntry.priority)
+        .order_by(WaitlistEntry.position)
         .limit(1)
     )
     waitlist_entry = result.scalar_one_or_none()

@@ -23,6 +23,7 @@ export default function Trainings() {
     day_of_week: '',
   })
   const [searchTerm, setSearchTerm] = useState('')
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
     api.get('/api/v1/regions/districts')
@@ -53,26 +54,35 @@ export default function Trainings() {
 
   const loadTrainings = async () => {
     setLoading(true)
+    setLoadError(null)
     try {
       const params = new URLSearchParams()
       if (filters.sport) params.append('sport', filters.sport)
-      if (filters.district_id) params.append('district_id', filters.district_id)
-      if (filters.elo_min) params.append('elo_min', filters.elo_min)
-      if (filters.elo_max) params.append('elo_max', filters.elo_max)
-      if (filters.day_of_week) params.append('day_of_week', filters.day_of_week)
+      const districtId = filters.district_id ? Number(filters.district_id) : null
+      if (districtId != null && !Number.isNaN(districtId)) params.append('district_id', String(districtId))
+      const eloMin = filters.elo_min ? Number(filters.elo_min) : null
+      if (eloMin != null && !Number.isNaN(eloMin)) params.append('elo_min', String(eloMin))
+      const eloMax = filters.elo_max ? Number(filters.elo_max) : null
+      if (eloMax != null && !Number.isNaN(eloMax)) params.append('elo_max', String(eloMax))
+      const dayOfWeek = filters.day_of_week !== '' ? Number(filters.day_of_week) : null
+      if (dayOfWeek != null && !Number.isNaN(dayOfWeek)) params.append('day_of_week', String(dayOfWeek))
       const res = await api.get(`/api/v1/trainings/?${params.toString()}`)
-      setAllTrainings(res.data)
+      const data = Array.isArray(res.data) ? res.data : []
+      setAllTrainings(data)
       if (!searchTerm) {
-        setTrainings(res.data)
+        setTrainings(data)
       } else {
         const term = searchTerm.toLowerCase()
-        setTrainings(res.data.filter((t: Training) =>
+        setTrainings(data.filter((t: Training) =>
           t.title.toLowerCase().includes(term) ||
           (t.description && t.description.toLowerCase().includes(term))
         ))
       }
     } catch (err) {
       console.error(err)
+      setLoadError('Nepodařilo se načíst nabídky tréninků. Zkontrolujte připojení a zkuste to znovu.')
+      setAllTrainings([])
+      setTrainings([])
     } finally {
       setLoading(false)
     }
@@ -204,7 +214,15 @@ export default function Trainings() {
           )}
         </div>
 
-        {loading ? (
+        {loadError ? (
+          <div className="card text-center py-16 animate-scale-in border-2 border-red-200 bg-red-50">
+            <p className="text-xl font-semibold text-red-700 mb-2">Chyba načítání</p>
+            <p className="text-gray-600 mb-6">{loadError}</p>
+            <button type="button" onClick={() => loadTrainings()} className="btn btn-primary">
+              Zkusit znovu
+            </button>
+          </div>
+        ) : loading ? (
           <div className="text-center py-16">
             <div className="inline-block">
               <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-teal-200 border-t-teal-600 rounded-full animate-spin"></div>
@@ -316,7 +334,15 @@ export default function Trainings() {
                   <div className="mt-5 pt-4 border-t border-gray-200/50">
                     <div className="flex items-center justify-between">
                       <span className="badge badge-info flex items-center gap-1">
-                        💺 Kapacita: {training.capacity}
+                        💺 {typeof training.free_spots_next === 'number'
+                          ? training.free_spots_next === 0
+                            ? 'Plně obsazeno'
+                            : training.free_spots_next === 1
+                              ? '1 volné místo'
+                              : training.free_spots_next >= 2 && training.free_spots_next <= 4
+                                ? training.free_spots_next + ' volná místa'
+                                : training.free_spots_next + ' volných míst'
+                          : 'Kapacita: ' + training.capacity}
                       </span>
                       <span className="text-teal-600 font-bold text-sm group-hover:translate-x-1 transition-transform flex items-center">
                         {!isAuthenticated ? 'Přihlásit se pro detail' : 'Detail'}

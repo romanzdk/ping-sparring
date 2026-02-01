@@ -24,6 +24,9 @@ class Registration(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     approved_at = Column(DateTime, nullable=True)
     cancelled_at = Column(DateTime, nullable=True)
+    rejoin_count = Column(
+        Integer, default=0, nullable=False
+    )  # Tracks how many times player rejoined after cancelling
 
     # Relationships
     player = relationship("Player", back_populates="registrations")
@@ -52,7 +55,9 @@ class ReputationScore(Base):
     total_registrations = Column(Integer, default=0, nullable=False)
     completed_trainings = Column(Integer, default=0, nullable=False)
     no_shows = Column(Integer, default=0, nullable=False)
-    last_minute_cancellations = Column(Integer, default=0, nullable=False)
+    last_minute_cancellations = Column(Integer, default=0, nullable=False)  # <12h before
+    cancellations_24h_48h = Column(Integer, default=0, nullable=False)  # 24-48h before
+    cancellations_12h_24h = Column(Integer, default=0, nullable=False)  # 12-24h before
     reliability_score = Column(Numeric(5, 2), default=100.0, nullable=False)  # 0-100
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 

@@ -131,7 +131,15 @@ export default function MyTrainings() {
                 <div className="mt-5 pt-4 border-t border-gray-200/50">
                   <div className="flex items-center justify-between">
                     <span className="badge badge-info flex items-center gap-1">
-                      Kapacita: {training.capacity}
+                      {typeof training.free_spots_next === 'number'
+                        ? training.free_spots_next === 0
+                          ? 'Plně obsazeno'
+                          : training.free_spots_next === 1
+                            ? '1 volné místo'
+                            : training.free_spots_next >= 2 && training.free_spots_next <= 4
+                              ? training.free_spots_next + ' volná místa'
+                              : training.free_spots_next + ' volných míst'
+                        : 'Kapacita: ' + training.capacity}
                     </span>
                     <span className="text-teal-600 font-bold text-sm group-hover:translate-x-2 transition-transform flex items-center">
                       Detail

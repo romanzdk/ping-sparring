@@ -18,6 +18,7 @@ class RegistrationResponse(BaseModel):
     created_at: datetime
     approved_at: datetime | None
     cancelled_at: datetime | None
+    rejoin_count: int = 0
 
     class Config:
         from_attributes = True
@@ -29,6 +30,7 @@ class RegistrationDetailResponse(RegistrationResponse):
     session_date: datetime
     training_id: int
     training_title: str
+    training_location: str
 
 
 class RegistrationWithPlayerResponse(RegistrationResponse):

@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import api from '../services/api'
 import { Training } from '../types'
 import Layout from '../components/Layout'
-import { Calendar, MapPin, Users, TrendingUp, Clock, Zap, Target, Info, ChevronDown, ChevronUp } from 'lucide-react'
+import { Calendar, MapPin, Clock, Zap, Target, Info, ChevronDown, ChevronUp } from 'lucide-react'
 import { formatTrainingDateLabel, formatTimeNoSeconds, getTrainingDayShort } from '../utils/trainingDate'
 
 interface RecommendationItem {
@@ -22,6 +22,7 @@ interface RegistrationDetail {
   status: string
   training_id: number
   training_title: string
+  training_location: string
   session_date: string
 }
 
@@ -29,6 +30,12 @@ interface TrainingRequestItem {
   id: number
   title: string
   status: string
+}
+
+interface TrainingRequestForClub extends TrainingRequestItem {
+  district_ids: number[]
+  elo_min: number
+  elo_max: number
 }
 
 export default function Dashboard() {
@@ -44,8 +51,11 @@ export default function Dashboard() {
   })
   const [registrationsDetail, setRegistrationsDetail] = useState<RegistrationDetail[]>([])
   const [activeRequests, setActiveRequests] = useState<TrainingRequestItem[]>([])
+  const [suitableRequests, setSuitableRequests] = useState<TrainingRequestForClub[]>([])
   const [expandedRegistrations, setExpandedRegistrations] = useState(false)
   const [expandedRequests, setExpandedRequests] = useState(false)
+  const [expandedOffers, setExpandedOffers] = useState(false)
+  const [expandedSuitableRequests, setExpandedSuitableRequests] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -87,18 +97,41 @@ export default function Dashboard() {
       }
       loadPlayerData()
     } else if (user.role === 'club') {
-      // Get my trainings for clubs (from /me/trainings endpoint)
-      api.get('/api/v1/users/me/trainings')
-        .then(res => {
-          console.log('Club trainings response:', res.data)
-          setTrainings(res.data || [])
-          setStats({ upcoming: res.data?.length || 0, total: res.data?.length || 0 })
+      const loadClubData = async () => {
+        try {
+          const [trainingsRes, requestsRes] = await Promise.all([
+            api.get('/api/v1/users/me/trainings'),
+            api.get('/api/v1/training-requests/').catch(() => ({ data: [] })),
+          ])
+          const clubTrainings: Training[] = trainingsRes.data || []
+          setTrainings(clubTrainings)
+          const allOpen: TrainingRequestForClub[] = (requestsRes.data || []).filter(
+            (r: { status: string }) => r.status === 'open'
+          )
+          const clubDistrictIds = new Set(clubTrainings.map((t: Training) => t.district_id))
+          const suitable = allOpen.filter((req: TrainingRequestForClub) => {
+            const districtMatch = (req.district_ids || []).some((d: number) => clubDistrictIds.has(d))
+            if (!districtMatch) return false
+            const eloOverlap = clubTrainings.some(
+              (t: Training) =>
+                Math.max(t.elo_min, req.elo_min) <= Math.min(t.elo_max, req.elo_max)
+            )
+            return eloOverlap
+          })
+          setSuitableRequests(suitable)
+          setStats({
+            upcoming: clubTrainings.length,
+            total: clubTrainings.length,
+            registeredCount: 0,
+            activeRequestsCount: suitable.length,
+          })
+        } catch (err) {
+          console.error('Error loading club dashboard:', err)
+        } finally {
           setLoading(false)
-        })
-        .catch((err) => {
-          console.error('Error loading club trainings:', err)
-          setLoading(false)
-        })
+        }
+      }
+      loadClubData()
     }
   }, [user])
 
@@ -118,7 +151,7 @@ export default function Dashboard() {
           </p>
         </div>
 
-        <div className={`grid grid-cols-1 gap-6 animate-slide-up ${user?.role === 'player' ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}>
+        <div className="grid grid-cols-1 gap-6 animate-slide-up md:grid-cols-2">
           {user?.role === 'player' ? (
             <>
               <div className="card-hover">
@@ -146,13 +179,15 @@ export default function Dashboard() {
                       <li key={r.id}>
                         <Link
                           to={`/registrations/${r.id}`}
-                          className="flex items-center gap-2 text-teal-600 hover:text-teal-800 font-medium"
+                          className="flex items-center gap-2 text-teal-600 hover:text-teal-800 font-medium group/link"
                         >
-                          <span className="truncate">{r.training_title}</span>
-                          <span className="text-gray-500 text-sm">
-                            {new Date(r.session_date).toLocaleDateString('cs-CZ')}
+                          <span className="flex-1 min-w-0">
+                            <span className="block truncate">{r.training_location}</span>
+                            <span className="text-gray-500 text-sm block truncate mt-0.5">
+                              {new Date(r.session_date).toLocaleDateString('cs-CZ')}
+                            </span>
                           </span>
-                          <span className="ml-auto">→</span>
+                          <span className="ml-2 flex-shrink-0 group-hover/link:translate-x-0.5 transition-transform">→</span>
                         </Link>
                       </li>
                     ))}
@@ -203,38 +238,88 @@ export default function Dashboard() {
             </>
           ) : (
             <>
-              <div className="card-hover group">
-                <div className="flex items-center">
-                  <div className="p-4 bg-teal-600 rounded-2xl shadow-sm group-hover:bg-teal-700 transition-colors">
-                    <Calendar className="w-7 h-7 text-white" />
+              <div className="card-hover">
+                <button
+                  type="button"
+                  onClick={() => setExpandedOffers((v) => !v)}
+                  className="w-full flex items-center justify-between text-left"
+                >
+                  <div className="flex items-center">
+                    <div className="p-4 bg-teal-600 rounded-2xl shadow-sm">
+                      <Calendar className="w-7 h-7 text-white" />
+                    </div>
+                    <div className="ml-5">
+                      <p className="text-sm font-bold text-gray-500 uppercase tracking-wide">Aktivní nabídky</p>
+                      <p className="text-3xl sm:text-4xl font-bold text-teal-600">{stats.upcoming}</p>
+                    </div>
                   </div>
-                  <div className="ml-5">
-                    <p className="text-sm font-bold text-gray-500 uppercase tracking-wide">Nadcházející</p>
-                    <p className="text-3xl sm:text-4xl font-bold text-teal-600">{stats.upcoming}</p>
-                  </div>
-                </div>
+                  <span className="text-gray-400 p-2">
+                    {expandedOffers ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                  </span>
+                </button>
+                {expandedOffers && trainings.length > 0 && (
+                  <ul className="mt-4 pt-4 border-t border-gray-200 space-y-2">
+                    {trainings.map((t) => (
+                      <li key={t.id}>
+                        <Link
+                          to={`/trainings/${t.id}`}
+                          className="flex items-center gap-2 text-teal-600 hover:text-teal-800 font-medium group/link"
+                        >
+                          <span className="flex-1 min-w-0">
+                            <span className="block truncate">{t.title?.trim() || `Trénink #${t.id}`}</span>
+                            <span className="text-gray-500 text-sm block truncate mt-0.5">
+                              {t.location}
+                              <span className="mx-1.5">·</span>
+                              {formatTrainingDateLabel(t)}
+                            </span>
+                          </span>
+                          <span className="ml-2 flex-shrink-0 group-hover/link:translate-x-0.5 transition-transform">→</span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {expandedOffers && trainings.length === 0 && (
+                  <p className="mt-4 pt-4 border-t border-gray-200 text-gray-500 text-sm">Žádné aktivní nabídky</p>
+                )}
               </div>
-              <div className="card-hover group">
-                <div className="flex items-center">
-                  <div className="p-4 bg-emerald-600 rounded-2xl shadow-sm group-hover:bg-emerald-700 transition-colors">
-                    <Users className="w-7 h-7 text-white" />
+              <div className="card-hover">
+                <button
+                  type="button"
+                  onClick={() => setExpandedSuitableRequests((v) => !v)}
+                  className="w-full flex items-center justify-between text-left"
+                >
+                  <div className="flex items-center">
+                    <div className="p-4 bg-emerald-600 rounded-2xl shadow-sm">
+                      <Target className="w-7 h-7 text-white" />
+                    </div>
+                    <div className="ml-5">
+                      <p className="text-sm font-bold text-gray-500 uppercase tracking-wide">Potenciálně vhodné poptávky</p>
+                      <p className="text-3xl sm:text-4xl font-bold text-emerald-600">{stats.activeRequestsCount}</p>
+                    </div>
                   </div>
-                  <div className="ml-5">
-                    <p className="text-sm font-bold text-gray-500 uppercase tracking-wide">Celkem</p>
-                    <p className="text-3xl sm:text-4xl font-bold text-emerald-600">{stats.total}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="card-hover group">
-                <div className="flex items-center">
-                  <div className="p-4 bg-amber-500 rounded-2xl shadow-sm group-hover:bg-amber-600 transition-colors">
-                    <TrendingUp className="w-7 h-7 text-white" />
-                  </div>
-                  <div className="ml-5">
-                    <p className="text-sm font-bold text-gray-500 uppercase tracking-wide">Hodnocení ELO</p>
-                    <p className="text-3xl sm:text-4xl font-bold text-amber-600">-</p>
-                  </div>
-                </div>
+                  <span className="text-gray-400 p-2">
+                    {expandedSuitableRequests ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                  </span>
+                </button>
+                {expandedSuitableRequests && suitableRequests.length > 0 && (
+                  <ul className="mt-4 pt-4 border-t border-gray-200 space-y-2">
+                    {suitableRequests.map((r) => (
+                      <li key={r.id}>
+                        <Link
+                          to={`/training-requests/${r.id}`}
+                          className="flex items-center gap-2 text-emerald-600 hover:text-emerald-800 font-medium"
+                        >
+                          <span className="truncate">{r.title?.trim() || `Poptávka #${r.id}`}</span>
+                          <span className="ml-auto">→</span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {expandedSuitableRequests && suitableRequests.length === 0 && (
+                  <p className="mt-4 pt-4 border-t border-gray-200 text-gray-500 text-sm">Žádné potenciálně vhodné poptávky</p>
+                )}
               </div>
             </>
           )}
@@ -356,7 +441,15 @@ export default function Dashboard() {
                     <div className="mt-5 pt-4 border-t border-gray-200/50">
                       <div className="flex items-center justify-between">
                         <span className="badge badge-info flex items-center gap-1">
-                          💺 Kapacita: {training.capacity}
+                          💺 {typeof training.free_spots_next === 'number'
+                            ? training.free_spots_next === 0
+                              ? 'Plně obsazeno'
+                              : training.free_spots_next === 1
+                                ? '1 volné místo'
+                                : training.free_spots_next >= 2 && training.free_spots_next <= 4
+                                  ? training.free_spots_next + ' volná místa'
+                                  : training.free_spots_next + ' volných míst'
+                            : 'Kapacita: ' + training.capacity}
                         </span>
                         <span className="text-teal-600 font-bold text-sm group-hover:translate-x-1 transition-transform flex items-center">
                           Detail

@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import api from '../services/api'
 import { Training, TrainingSession, Registration, RegistrationWithPlayerDetail } from '../types'
 import Layout from '../components/Layout'
-import { Calendar, MapPin, Users, Clock, ArrowLeft, CheckCircle, XCircle, Target, Zap, DollarSign, Edit2, Trash2, List, Mail, Phone, ChevronDown, ChevronRight, Award, Shield } from 'lucide-react'
+import { Calendar, MapPin, Users, Clock, ArrowLeft, CheckCircle, XCircle, Target, Zap, DollarSign, Edit2, Trash2, List, Mail, Phone, ChevronDown, ChevronRight, Award, Shield, UserMinus } from 'lucide-react'
 import { format } from 'date-fns'
 import { cs } from 'date-fns/locale'
 import { formatTrainingDateLabel, formatTimeNoSeconds, getTrainingDayShort } from '../utils/trainingDate'
@@ -20,6 +20,7 @@ export default function TrainingDetail() {
   const [expandedAttendeeIds, setExpandedAttendeeIds] = useState<Set<number>>(new Set())
   const [loading, setLoading] = useState(true)
   const [registering, setRegistering] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
@@ -99,6 +100,29 @@ export default function TrainingDetail() {
     }
   }
 
+  const handleUnregister = async (registrationId: number) => {
+    if (!window.confirm('Opravdu se chcete z tohoto tréninku odhlásit? Klub dostane notifikaci.')) {
+      return
+    }
+    setCancelling(true)
+    try {
+      await api.post('/api/v1/registrations/' + registrationId + '/cancel')
+      await loadData()
+      const notif = document.createElement('div')
+      notif.className = 'fixed top-4 right-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-4 rounded-xl shadow-2xl animate-scale-in z-50'
+      notif.innerHTML = '✓ Odhlášení proběhlo.'
+      document.body.appendChild(notif)
+      setTimeout(() => notif.remove(), 3000)
+    } catch (err: any) {
+      const notif = document.createElement('div')
+      notif.className = 'fixed top-4 right-4 bg-gradient-to-r from-red-500 to-pink-600 text-white px-6 py-4 rounded-xl shadow-2xl animate-scale-in z-50'
+      notif.innerHTML = '✗ ' + (err.response?.data?.detail || 'Odhlášení se nepovedlo.')
+      document.body.appendChild(notif)
+      setTimeout(() => notif.remove(), 3000)
+    } finally {
+      setCancelling(false)
+    }
+  }
 
   const handleDelete = async () => {
     if (!id) return
@@ -129,7 +153,7 @@ export default function TrainingDetail() {
       case 'waitlist':
         return <span className="badge badge-info flex items-center gap-1"><List className="w-3 h-3" /> Čekací listina</span>
       case 'cancelled':
-        return <span className="badge badge-secondary">Zrušeno</span>
+        return <span className="badge badge-secondary">Odhlásili jste se</span>
       default:
         return <span className="badge badge-info">{status}</span>
     }
@@ -162,6 +186,16 @@ export default function TrainingDetail() {
       </Layout>
     )
   }
+
+  const hasAnyFreeCapacity = sessions.some((s) => {
+    const isFuture = new Date(s.date) >= new Date()
+    const statusStr = typeof s.status === 'string' ? s.status : ''
+    const isScheduled = statusStr.toLowerCase() === 'scheduled'
+    const registeredCount = s.registered_count ?? 0
+    const cap = training?.capacity ?? 0
+    const freeSpots = Math.max(0, cap - registeredCount)
+    return isFuture && isScheduled && freeSpots > 0
+  })
 
   return (
     <Layout>
@@ -245,8 +279,16 @@ export default function TrainingDetail() {
                 </div>
                 <div>
                   <p className="font-bold text-gray-900 text-lg">Místo</p>
-                  <p className="text-gray-600 font-medium">{training.location}</p>
-                  <p className="text-sm text-gray-500">{training.address}</p>
+                  {hasAnyFreeCapacity ? (
+                    <>
+                      <p className="text-gray-600 font-medium">{training.location}</p>
+                      <p className="text-sm text-gray-500">{training.address}</p>
+                    </>
+                  ) : (
+                    <p className="text-gray-500 font-medium italic">
+                      Místo je zobrazeno pouze u termínů s volnou kapacitou.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -281,7 +323,7 @@ export default function TrainingDetail() {
                   <p className="text-2xl font-black text-amber-600">{training.fee} Kč</p>
                 </div>
               )}
-              {isAuthenticated && (training.contact_email || training.contact_phone) && (
+              {isAuthenticated && hasAnyFreeCapacity && (training.contact_email || training.contact_phone) && (
                 <div className="p-5 bg-teal-50 rounded-xl border-2 border-teal-200">
                   <p className="font-bold text-gray-900 mb-2">Kontakt klubu</p>
                   {training.contact_email && (
@@ -448,7 +490,7 @@ export default function TrainingDetail() {
                                           </div>
                                         )}
                                         {detail.primary_district_names != null &&
-                                        detail.primary_district_names.length > 0 ? (
+                                          detail.primary_district_names.length > 0 ? (
                                           <div className="flex items-center gap-2">
                                             <MapPin className="w-4 h-4 flex-shrink-0 text-teal-600" />
                                             <span className="text-gray-700">
@@ -497,13 +539,49 @@ export default function TrainingDetail() {
                           <div className="text-gray-400 font-medium">Proběhlo</div>
                         ) : isPlayer ? (
                           registration ? (
-                            <button
-                              type="button"
-                              onClick={() => navigate(`/registrations/${registration.id}`)}
-                              className="btn btn-secondary w-full sm:w-auto"
-                            >
-                              Zobrazit přihlášku
-                            </button>
+                            String(registration.status) === 'cancelled' ? (
+                              <button
+                                type="button"
+                                onClick={() => handleRegister(session.id)}
+                                disabled={registering || !isScheduled}
+                                className="btn btn-primary flex items-center justify-center w-full sm:w-auto"
+                              >
+                                {registering ? (
+                                  <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                    Přihlašování...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Zap className="w-4 h-4 mr-2" />
+                                    Přihlásit se znovu
+                                  </>
+                                )}
+                              </button>
+                            ) : (
+                              <div className="flex flex-wrap items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => navigate(`/registrations/${registration.id}`)}
+                                  className="btn btn-secondary"
+                                >
+                                  Zobrazit přihlášku
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleUnregister(registration.id)}
+                                  disabled={cancelling}
+                                  className="btn flex items-center border-2 border-amber-200 text-amber-700 hover:bg-amber-50 hover:border-amber-300 disabled:opacity-50"
+                                >
+                                  {cancelling ? (
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-amber-600 mr-2" />
+                                  ) : (
+                                    <UserMinus className="w-4 h-4 mr-2" />
+                                  )}
+                                  Odhlásit se
+                                </button>
+                              </div>
+                            )
                           ) : (
                             <button
                               type="button"

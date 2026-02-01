@@ -13,8 +13,8 @@ from jinja2 import Template
 from app.core.config import settings
 from app.models.notification import Notification, NotificationType
 from app.models.user import User, Player
-from app.models.training import TrainingSession
-from app.models.registration import Registration
+from app.models.training import Training, TrainingSession
+from app.models.registration import Registration, RegistrationStatus
 
 
 async def send_email(to_email: str, subject: str, body: str):
@@ -112,6 +112,58 @@ Termín: {training_session.date.strftime("%d.%m.%Y %H:%M")}
 Více informací: {settings.FRONTEND_URL}{action_url}
 """
     await send_email(user.email, title, email_body)
+
+
+async def send_player_registered_to_club_notification(
+    club_user_id: int,
+    player_name: str,
+    training_title: str,
+    training_id: int,
+    session_date: datetime,
+    status: str,
+    db: AsyncSession,
+):
+    """Notify club when a player signs up for a training (in-app only)."""
+    status_text = {
+        "approved": "přihlásil se",
+        "pending": "čeká na schválení",
+        "waitlist": "se přihlásil na čekací listinu",
+    }.get(status, "se přihlásil")
+    date_str = session_date.strftime("%d.%m.%Y %H:%M")
+    title = "Nová přihláška na trénink"
+    message = f"{player_name} {status_text} na trénink {training_title} ({date_str})."
+    action_url = f"/trainings/{training_id}"
+    await create_notification(
+        club_user_id,
+        NotificationType.PLAYER_REGISTERED,
+        title,
+        message,
+        action_url,
+        db,
+    )
+
+
+async def send_player_unregistered_to_club_notification(
+    club_user_id: int,
+    player_name: str,
+    training_title: str,
+    training_id: int,
+    session_date: datetime,
+    db: AsyncSession,
+):
+    """Notify club when a player cancels their registration (in-app only)."""
+    date_str = session_date.strftime("%d.%m.%Y %H:%M")
+    title = "Zrušená přihláška"
+    message = f"{player_name} zrušil přihlášku na trénink {training_title} ({date_str})."
+    action_url = f"/trainings/{training_id}"
+    await create_notification(
+        club_user_id,
+        NotificationType.PLAYER_UNREGISTERED,
+        title,
+        message,
+        action_url,
+        db,
+    )
 
 
 async def send_registration_rejected_notification(
@@ -251,3 +303,85 @@ async def send_training_reminders(db: AsyncSession):
 
             if user:
                 await send_training_reminder_notification(user, session, db)
+
+
+async def get_users_registered_to_training(training_id: int, db: AsyncSession) -> list[User]:
+    """Return distinct users (players) who have any non-cancelled registration to any session of this training."""
+    result = await db.execute(
+        select(User)
+        .join(Player, User.id == Player.user_id)
+        .join(Registration, Registration.player_id == Player.id)
+        .join(TrainingSession, Registration.training_session_id == TrainingSession.id)
+        .where(
+            TrainingSession.training_id == training_id,
+            Registration.status != RegistrationStatus.CANCELLED,
+        )
+        .distinct()
+    )
+    return list(result.scalars().all())
+
+
+async def send_training_updated_notification(
+    user: User, training: Training, db: AsyncSession
+) -> None:
+    """Notify player that a training they are registered to was updated by the club."""
+    day_names = ["pondělí", "úterý", "středa", "čtvrtek", "pátek", "sobota", "neděle"]
+    day_name = day_names[training.day_of_week] if 0 <= training.day_of_week < 7 else ""
+    time_str = "%s %s" % (day_name, training.start_time.strftime("%H:%M"))
+    club_name = training.club.user.club_name if training.club and training.club.user else "Klub"
+    
+    title = "Trénink byl upraven"
+    message = "%s upravil trénink (%s), na který jste přihlášeni. Zkontrolujte změny." % (
+        club_name,
+        time_str,
+    )
+    action_url = "/trainings/%s" % training.id
+    await create_notification(
+        user.id, NotificationType.TRAINING_UPDATED, title, message, action_url, db
+    )
+    email_body = """
+Dobrý den,
+
+%s upravil trénink, na který jste přihlášeni (%s).
+
+Zkontrolujte změny: %s%s
+""" % (
+        club_name,
+        time_str,
+        settings.FRONTEND_URL,
+        action_url,
+    )
+    await send_email(user.email, title, email_body)
+
+
+async def send_training_removed_notification(
+    user: User, training: Training, db: AsyncSession
+) -> None:
+    """Notify player that a training they were registered to was removed (deactivated) by the club."""
+    day_names = ["pondělí", "úterý", "středa", "čtvrtek", "pátek", "sobota", "neděle"]
+    day_name = day_names[training.day_of_week] if 0 <= training.day_of_week < 7 else ""
+    time_str = "%s %s" % (day_name, training.start_time.strftime("%H:%M"))
+    club_name = training.club.user.club_name if training.club and training.club.user else "Klub"
+    
+    title = "Nabídka tréninku byla zrušena"
+    message = "%s zrušil nabídku tréninku (%s), na který jste byli přihlášeni." % (
+        club_name,
+        time_str,
+    )
+    action_url = "/trainings"
+    await create_notification(
+        user.id, NotificationType.TRAINING_REMOVED, title, message, action_url, db
+    )
+    email_body = """
+Dobrý den,
+
+%s zrušil nabídku tréninku, na který jste byli přihlášeni (%s).
+
+Další tréninky naleznete zde: %s%s
+""" % (
+        club_name,
+        time_str,
+        settings.FRONTEND_URL,
+        action_url,
+    )
+    await send_email(user.email, title, email_body)

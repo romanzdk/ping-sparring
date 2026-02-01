@@ -1,30 +1,23 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { useNotifications } from '../hooks/useNotifications'
 import { LogOut, User, Home, Calendar, Bell, Users, LogIn, UserPlus, Menu, X, Mail } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import api from '../services/api'
-import { Notification } from '../types'
 
 const navLinkClass = "flex items-center min-h-[44px] px-4 py-3 text-base font-semibold text-gray-700 hover:text-teal-600 rounded-xl hover:bg-teal-50/80 transition-all w-full sm:w-auto"
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { user, logout, isAuthenticated } = useAuth()
+  const { unreadCount, refetch } = useNotifications()
   const navigate = useNavigate()
   const location = useLocation()
-  const [notifications, setNotifications] = useState<Notification[]>([])
-  const [unreadCount, setUnreadCount] = useState(0)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
-    if (isAuthenticated) {
-      api.get('/api/v1/notifications/?unread_only=true&limit=5')
-        .then(res => {
-          setNotifications(res.data)
-          setUnreadCount(res.data.filter((n: Notification) => !n.read).length)
-        })
-        .catch(() => { })
+    if (isAuthenticated && location.pathname === '/notifications') {
+      refetch()
     }
-  }, [isAuthenticated])
+  }, [isAuthenticated, location.pathname, refetch])
 
   const handleLogout = () => {
     logout()

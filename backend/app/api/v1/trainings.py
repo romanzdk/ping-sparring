@@ -12,6 +12,11 @@ from app.models.user import User, UserRole, Club
 from app.models.training import Training, TrainingSession, TrainingStatus, ScheduleType
 from app.models.region import District
 from app.models.registration import Registration, RegistrationStatus
+from app.services.notifications import (
+    get_users_registered_to_training,
+    send_training_removed_notification,
+    send_training_updated_notification,
+)
 from app.schemas.training import (
     TrainingCreate,
     TrainingResponse,
@@ -68,6 +73,47 @@ async def get_trainings(
         res = await db.execute(subq)
         session_dates = {row.training_id: row.first_date for row in res.all()}
 
+    # Free spots on next upcoming scheduled session per training
+    training_ids = [t.id for t in trainings]
+    now_utc = datetime.utcnow()
+    free_spots_next: dict[int, int] = {}
+    if training_ids:
+        sess_q = (
+            select(TrainingSession)
+            .where(
+                TrainingSession.training_id.in_(training_ids),
+                TrainingSession.date >= now_utc,
+                TrainingSession.status == TrainingStatus.SCHEDULED,
+            )
+            .order_by(TrainingSession.date)
+        )
+        sess_res = await db.execute(sess_q)
+        upcoming = sess_res.scalars().all()
+        next_by_training: dict[int, TrainingSession] = {}
+        for s in upcoming:
+            if s.training_id not in next_by_training:
+                next_by_training[s.training_id] = s
+        next_session_ids = [s.id for s in next_by_training.values()]
+        if next_session_ids:
+            count_res = await db.execute(
+                select(Registration.training_session_id, func.count(Registration.id).label("cnt"))
+                .where(
+                    and_(
+                        Registration.training_session_id.in_(next_session_ids),
+                        Registration.status.in_(
+                            [RegistrationStatus.APPROVED, RegistrationStatus.PENDING]
+                        ),
+                    )
+                )
+                .group_by(Registration.training_session_id)
+            )
+            counts = {row.training_session_id: row.cnt for row in count_res.all()}
+            for tid, sess in next_by_training.items():
+                t = next((x for x in trainings if x.id == tid), None)
+                if t is not None:
+                    reg_count = counts.get(sess.id, 0)
+                    free_spots_next[tid] = max(0, t.capacity - reg_count)
+
     if current_user is None:
         district_ids = list({t.district_id for t in trainings})
         districts_map: dict[int, str] = {}
@@ -101,6 +147,7 @@ async def get_trainings(
                 contact_phone=None,
                 club_name=t.club.club_name if t.club else None,
                 session_date=session_dates.get(t.id),
+                free_spots_next=free_spots_next.get(t.id),
             )
             for t in trainings
         ]
@@ -116,6 +163,7 @@ async def get_trainings(
                     "contact_phone": t.club.phone if t.club else None,
                     "club_name": t.club.club_name if t.club else None,
                     "session_date": session_dates.get(t.id),
+                    "free_spots_next": free_spots_next.get(t.id),
                 }
             )
         )
@@ -181,8 +229,8 @@ async def create_training(
     if not club:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Club profile not found")
 
-    # Limit: max 5 active offers per club
-    MAX_ACTIVE_TRAININGS_PER_CLUB = 5
+    # Limit: max 2 active offers per club
+    MAX_ACTIVE_TRAININGS_PER_CLUB = 2
     count_result = await db.execute(
         select(func.count(Training.id)).where(
             and_(Training.club_id == club.id, Training.is_active == True)
@@ -191,7 +239,7 @@ async def create_training(
     if count_result.scalar_one() >= MAX_ACTIVE_TRAININGS_PER_CLUB:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Váš klub má již maximální počet aktivních nabídek (5). Pro přidání nové některou smažte.",
+            detail="Váš klub má již maximální počet aktivních nabídek (2). Pro přidání nové některou smažte.",
         )
 
     # Get district to get region_id
@@ -256,8 +304,12 @@ async def update_training(
     if not club:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Club profile not found")
 
-    # Get training
-    result = await db.execute(select(Training).where(Training.id == training_id))
+    # Get training with club loaded
+    result = await db.execute(
+        select(Training)
+        .options(selectinload(Training.club).selectinload(Club.user))
+        .where(Training.id == training_id)
+    )
     training = result.scalar_one_or_none()
 
     if not training:
@@ -304,6 +356,11 @@ async def update_training(
     await db.commit()
     await db.refresh(training)
 
+    # Notify all players registered to this training
+    registered_users = await get_users_registered_to_training(training.id, db)
+    for user in registered_users:
+        await send_training_updated_notification(user, training, db)
+
     return training
 
 
@@ -326,8 +383,12 @@ async def delete_training(
     if not club:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Club profile not found")
 
-    # Get training
-    result = await db.execute(select(Training).where(Training.id == training_id))
+    # Get training with club loaded
+    result = await db.execute(
+        select(Training)
+        .options(selectinload(Training.club).selectinload(Club.user))
+        .where(Training.id == training_id)
+    )
     training = result.scalar_one_or_none()
 
     if not training:
@@ -339,9 +400,15 @@ async def delete_training(
             status_code=status.HTTP_403_FORBIDDEN, detail="You can only delete your own trainings"
         )
 
+    # Notify all players registered to this training before deactivating
+    registered_users = await get_users_registered_to_training(training.id, db)
+
     # Soft delete by setting is_active to False
     training.is_active = False
     await db.commit()
+
+    for user in registered_users:
+        await send_training_removed_notification(user, training, db)
 
     return None
 

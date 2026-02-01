@@ -1,49 +1,30 @@
-import { useEffect, useState } from 'react'
-import api from '../services/api'
-import { Notification } from '../types'
 import Layout from '../components/Layout'
-import { Bell, Check, Clock, Sparkles } from 'lucide-react'
+import { useNotifications } from '../hooks/useNotifications'
+import { useNavigate } from 'react-router-dom'
+import { Bell, Check, Clock } from 'lucide-react'
 import { format } from 'date-fns'
 import { cs } from 'date-fns/locale'
 
 export default function Notifications() {
-  const [notifications, setNotifications] = useState<Notification[]>([])
-  const [loading, setLoading] = useState(true)
+  const navigate = useNavigate()
+  const {
+    notifications,
+    unreadCount,
+    loading,
+    error,
+    refetch,
+    markAsRead,
+    markAllAsRead,
+  } = useNotifications()
 
-  useEffect(() => {
-    loadNotifications()
-  }, [])
-
-  const loadNotifications = async () => {
-    try {
-      const res = await api.get('/api/v1/notifications/?limit=50')
-      setNotifications(res.data)
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setLoading(false)
+  const handleNotificationClick = (notification: any) => {
+    if (notification.action_url) {
+      if (!notification.read) {
+        markAsRead(notification.id)
+      }
+      navigate(notification.action_url)
     }
   }
-
-  const markAsRead = async (id: number) => {
-    try {
-      await api.put(`/api/v1/notifications/${id}/read`)
-      setNotifications(notifications.map(n => n.id === id ? { ...n, read: true } : n))
-    } catch (err) {
-      console.error(err)
-    }
-  }
-
-  const markAllAsRead = async () => {
-    try {
-      await api.put('/api/v1/notifications/read-all')
-      setNotifications(notifications.map(n => ({ ...n, read: true })))
-    } catch (err) {
-      console.error(err)
-    }
-  }
-
-  const unreadCount = notifications.filter(n => !n.read).length
 
   return (
     <Layout>
@@ -69,7 +50,14 @@ export default function Notifications() {
           )}
         </div>
 
-        {loading ? (
+        {error ? (
+          <div className="card text-center py-16 animate-scale-in">
+            <p className="text-xl font-semibold text-red-600 mb-2">{error}</p>
+            <button onClick={() => refetch()} className="btn btn-primary mt-4">
+              Zkusit znovu
+            </button>
+          </div>
+        ) : loading ? (
           <div className="text-center py-16">
             <div className="inline-block">
               <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-teal-200 border-t-teal-600 rounded-full animate-spin"></div>
@@ -87,7 +75,8 @@ export default function Notifications() {
             {notifications.map((notification, index) => (
               <div
                 key={notification.id}
-                className={`card-hover animate-scale-in ${!notification.read
+                onClick={() => handleNotificationClick(notification)}
+                className={`card-hover animate-scale-in cursor-pointer transition-transform hover:scale-[1.02] ${!notification.read
                   ? 'bg-teal-50 border-l-4 border-teal-500'
                   : ''
                   }`}
@@ -112,7 +101,10 @@ export default function Notifications() {
                   </div>
                   {!notification.read && (
                     <button
-                      onClick={() => markAsRead(notification.id)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        markAsRead(notification.id)
+                      }}
                       className="btn btn-secondary ml-4 flex items-center"
                     >
                       <Check className="w-4 h-4 mr-2" />

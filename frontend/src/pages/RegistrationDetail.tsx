@@ -44,7 +44,7 @@ export default function RegistrationDetail() {
       case 'waitlist':
         return <span className="badge badge-info flex items-center gap-1"><List className="w-3 h-3" /> Čekací listina</span>
       case 'cancelled':
-        return <span className="badge badge-secondary">Zrušeno</span>
+        return <span className="badge badge-secondary">Odhlásili jste se</span>
       default:
         return <span className="badge badge-info">{status}</span>
     }

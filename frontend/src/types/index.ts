@@ -69,6 +69,8 @@ export interface Training {
   club_name?: string | null
   /** For one_time: date of the single session (ISO string). */
   session_date?: string | null
+  /** Free spots on next upcoming scheduled session (from list API). */
+  free_spots_next?: number | null
 }
 
 export interface TrainingSession {
@@ -95,6 +97,7 @@ export interface RegistrationDetail extends Registration {
   session_date: string
   training_id: number
   training_title: string
+  training_location: string
 }
 
 export interface RegistrationWithPlayer extends Registration {

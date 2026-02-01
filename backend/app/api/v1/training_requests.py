@@ -17,7 +17,7 @@ from app.schemas.training_request import (
 
 router = APIRouter()
 
-MAX_ACTIVE_REQUESTS_PER_PLAYER = 5
+MAX_ACTIVE_REQUESTS_PER_PLAYER = 2
 
 
 @router.post("/", response_model=TrainingRequestResponse, status_code=status.HTTP_201_CREATED)
@@ -42,7 +42,7 @@ async def create_training_request(
             status_code=status.HTTP_404_NOT_FOUND, detail="Player profile not found"
         )
 
-    # Limit: max 5 active (OPEN) requests per player
+    # Limit: max 2 active (OPEN) requests per player
     count_result = await db.execute(
         select(func.count(TrainingRequest.id)).where(
             and_(
@@ -54,7 +54,7 @@ async def create_training_request(
     if count_result.scalar_one() >= MAX_ACTIVE_REQUESTS_PER_PLAYER:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Máte již maximální počet aktivních poptávek (5). Pro přidání nové některou smažte.",
+            detail="Máte již maximální počet aktivních poptávek (2). Pro přidání nové některou smažte.",
         )
 
     # Create request
@@ -285,7 +285,7 @@ async def update_training_request(
             if count_result.scalar_one() >= MAX_ACTIVE_REQUESTS_PER_PLAYER:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Máte již maximální počet aktivních poptávek (5). Pro znovuotevření některou jinou smažte.",
+                    detail="Máte již maximální počet aktivních poptávek (2). Pro znovuotevření některou jinou smažte.",
                 )
     for key, value in update_data.items():
         setattr(request, key, value)

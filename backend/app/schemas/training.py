@@ -45,6 +45,7 @@ class TrainingResponse(TrainingBase):
     contact_phone: str | None = None  # club phone, filled by API
     club_name: str | None = None  # club name, filled by API
     session_date: datetime | None = None  # for one_time: date of the single session
+    free_spots_next: int | None = None  # free spots on next upcoming scheduled session
 
     class Config:
         from_attributes = True
@@ -75,6 +76,7 @@ class TrainingPublicResponse(BaseModel):
     contact_phone: str | None = None
     club_name: str | None = None
     session_date: datetime | None = None  # for one_time: date of the single session
+    free_spots_next: int | None = None  # free spots on next upcoming scheduled session
 
     class Config:
         from_attributes = True
