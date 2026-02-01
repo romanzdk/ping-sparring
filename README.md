@@ -253,14 +253,77 @@ cd frontend
 npm run lint
 ```
 
-## Produkční nasazení
+## Produkční nasazení (Render.com)
 
-1. Nastavte `ENVIRONMENT=production` v `.env`
-2. Vygenerujte silný `SECRET_KEY`
-3. Nakonfigurujte produkční databázi
-4. Nastavte SMTP pro email notifikace
-5. Build frontendu: `cd frontend && npm run build`
-6. Spusťte s Docker Compose v produkčním režimu
+Aplikace je nasazena na Render.com:
+
+| Služba | URL |
+|--------|-----|
+| Frontend | https://muj-trenink.onrender.com |
+| Backend API | https://muj-trenink-api.onrender.com |
+| API Docs | https://muj-trenink-api.onrender.com/docs |
+
+### Automatické nasazení
+
+- Push do `main` větve automaticky spustí deploy obou služeb
+- Render CLI lze použít pro manuální operace
+
+### Render CLI
+
+```bash
+# Instalace
+brew install render
+
+# Přihlášení
+render login
+
+# Seznam služeb
+render services list -o json
+
+# Logy backendu
+render logs --service <backend-service-id> -o text
+
+# Manuální deploy
+render deploys create --service <backend-service-id> -o json --confirm
+
+# SSH do backendu
+render ssh <backend-service-id>
+
+# Databázová konzole
+render psql <database-id>
+```
+
+### Environment Variables
+
+Nastavují se přes Render Dashboard:
+- Backend: https://dashboard.render.com/web/<backend-service-id>/env
+- Frontend: https://dashboard.render.com/web/<frontend-service-id>/env
+
+### Databázové migrace v produkci
+
+```bash
+# SSH do backendu
+render ssh <backend-service-id>
+
+# V kontejneru
+cd /app && alembic upgrade head
+```
+
+### Lokální produkční build
+
+Pro testování produkčního buildu lokálně:
+
+```bash
+# Nastavte proměnné prostředí
+cp .env.example .env
+# Upravte .env pro produkci
+
+# Spusťte produkční compose
+docker-compose -f docker-compose.prod.yml up -d
+
+# Migrace
+docker-compose -f docker-compose.prod.yml exec backend alembic upgrade head
+```
 
 ## Licence
 
