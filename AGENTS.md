@@ -53,9 +53,31 @@ render psql <database-id>
 
 ### Environment Variables
 
-Environment variables must be set via the Render Dashboard:
+Environment variables can be set via the Render Dashboard or API:
+
+**Dashboard:**
 - Backend: https://dashboard.render.com/web/<backend-service-id>/env
 - Frontend: https://dashboard.render.com/web/<frontend-service-id>/env
+
+**API (requires API key from ~/.render/cli.yaml):**
+
+```bash
+# Get API key
+API_KEY=$(grep 'key:' ~/.render/cli.yaml | head -1 | awk '{print $2}')
+
+# List current env vars
+curl -s -H "Authorization: Bearer $API_KEY" \
+  "https://api.render.com/v1/services/<backend-service-id>/env-vars" | python3 -m json.tool
+
+# Set an env var
+curl -s -X PUT -H "Authorization: Bearer $API_KEY" \
+  -H "Content-Type: application/json" \
+  "https://api.render.com/v1/services/<backend-service-id>/env-vars/VAR_NAME" \
+  -d '{"value": "var_value"}'
+
+# After setting env vars, trigger a deploy to apply them
+render deploys create <backend-service-id> -o json --confirm
+```
 
 **Required Backend Environment Variables:**
 
