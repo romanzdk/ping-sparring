@@ -7,11 +7,11 @@ WORKDIR /app
 ARG VITE_API_URL=/api
 ENV VITE_API_URL=$VITE_API_URL
 
-# Copy package files
-COPY package.json package-lock.json ./
+# Copy only package.json (ignore package-lock.json to get correct platform binaries)
+COPY package.json ./
 
-# Clean install with platform-specific binaries
-RUN npm ci --include=dev
+# Fresh install to get correct native binaries for Linux x64
+RUN npm install
 
 # Copy source files
 COPY . .
