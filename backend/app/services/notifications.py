@@ -19,14 +19,15 @@ from app.models.registration import Registration, RegistrationStatus
 
 async def send_email(to_email: str, subject: str, body: str) -> bool:
     """Send an email via SMTP.
-    
+
     Returns True if email was sent successfully, False otherwise.
-    
+
     Note: Port 587 uses STARTTLS (start_tls=True), Port 465 uses direct TLS (use_tls=True).
     """
     import logging
+
     logger = logging.getLogger(__name__)
-    
+
     if not settings.SMTP_USER or not settings.SMTP_PASSWORD:
         # In development, just print to console
         logger.info("SMTP not configured, printing email to console")
@@ -56,6 +57,7 @@ async def send_email(to_email: str, subject: str, body: str) -> bool:
                 username=settings.SMTP_USER,
                 password=settings.SMTP_PASSWORD,
                 use_tls=True,
+                timeout=10,
             )
         else:
             # Port 587 or other - use STARTTLS
@@ -66,6 +68,7 @@ async def send_email(to_email: str, subject: str, body: str) -> bool:
                 username=settings.SMTP_USER,
                 password=settings.SMTP_PASSWORD,
                 start_tls=True,
+                timeout=10,
             )
         logger.info("Email sent successfully to %s", to_email)
         return True
@@ -96,15 +99,13 @@ Pokud jste o obnovu hesla nepožádali, tento e-mail ignorujte. Vaše heslo zůs
 
 S pozdravem,
 tým Ping Sparring
-""".format(
-        reset_link=reset_link
-    ).strip()
+""".format(reset_link=reset_link).strip()
     await send_email(to_email, subject, body)
 
 
 async def send_verification_email(to_email: str, verification_link: str) -> bool:
     """Send email with link to verify email address.
-    
+
     Returns True if email was sent successfully, False otherwise.
     """
     subject = "Ověření e-mailu – Ping Sparring"
@@ -121,9 +122,7 @@ Pokud jste se neregistrovali na Ping Sparring, tento e-mail ignorujte.
 
 S pozdravem,
 tým Ping Sparring
-""".format(
-        verification_link=verification_link
-    ).strip()
+""".format(verification_link=verification_link).strip()
     return await send_email(to_email, subject, body)
 
 
@@ -465,7 +464,7 @@ async def send_training_updated_notification(
     day_name = day_names[training.day_of_week] if 0 <= training.day_of_week < 7 else ""
     time_str = "%s %s" % (day_name, training.start_time.strftime("%H:%M"))
     club_name = training.club.club_name if training.club else "Klub"
-    
+
     title = "Trénink byl upraven"
     message = "%s upravil trénink (%s), na který jste přihlášeni. Zkontrolujte změny." % (
         club_name,
@@ -498,7 +497,7 @@ async def send_training_removed_notification(
     day_name = day_names[training.day_of_week] if 0 <= training.day_of_week < 7 else ""
     time_str = "%s %s" % (day_name, training.start_time.strftime("%H:%M"))
     club_name = training.club.club_name if training.club else "Klub"
-    
+
     title = "Nabídka tréninku byla zrušena"
     message = "%s zrušil nabídku tréninku (%s), na který jste byli přihlášeni." % (
         club_name,
