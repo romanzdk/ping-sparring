@@ -69,7 +69,9 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.prod
       args:
-        VITE_API_URL: ${VITE_API_URL:-/api}
+        # For docker-compose: use http://backend:8000 or configure nginx proxy
+        # For Render.com: set VITE_API_URL to the backend service URL
+        VITE_API_URL: ${VITE_API_URL:-http://backend:8000}
     container_name: pingsparring_frontend
     ports:
       - "80:80"
