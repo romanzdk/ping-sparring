@@ -1,7 +1,7 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useNotifications } from '../hooks/useNotifications'
-import { LogOut, User, Home, Calendar, Bell, Users, LogIn, UserPlus, Menu, X, Mail, AlertTriangle, Send } from 'lucide-react'
+import { LogOut, User, Home, Calendar, Bell, Users, LogIn, UserPlus, Menu, X, Mail, AlertTriangle, Send, Info } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 const navLinkClass = "flex items-center min-h-[44px] px-4 py-3 text-base font-semibold text-gray-700 hover:text-teal-600 rounded-xl hover:bg-teal-50/80 transition-all w-full sm:w-auto"
@@ -15,6 +15,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [resendLoading, setResendLoading] = useState(false)
   const [resendSuccess, setResendSuccess] = useState(false)
   const [bannerDismissed, setBannerDismissed] = useState(false)
+  const [disclaimerDismissed, setDisclaimerDismissed] = useState(() => {
+    return localStorage.getItem('disclaimerDismissed') === 'true'
+  })
 
   const handleResendVerification = async () => {
     if (!user?.email) return
@@ -30,6 +33,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   }
 
   const showEmailBanner = isAuthenticated && user && !user.email_verified && !bannerDismissed
+  const showDisclaimer = !disclaimerDismissed
+
+  const handleDisclaimerDismiss = () => {
+    setDisclaimerDismissed(true)
+    localStorage.setItem('disclaimerDismissed', 'true')
+  }
 
   useEffect(() => {
     if (isAuthenticated && location.pathname === '/notifications') {
@@ -93,10 +102,41 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     </>
   )
 
+  const DisclaimerBanner = () => (
+    showDisclaimer && (
+      <div className="bg-blue-50 border-b-2 border-blue-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+            <div className="flex items-start sm:items-center gap-2 text-blue-800">
+              <Info className="w-5 h-5 flex-shrink-0 mt-0.5 sm:mt-0" />
+              <div className="text-sm sm:text-base">
+                <span className="font-bold">První verze aplikace</span>
+                <span className="ml-1">– jedná se o začátek vývoje, určitě se zde vyskytnou chyby. Prosím o trpělivost a shovívavost. Aplikaci vytvářím ve svém volném čase zdarma. Pokud narazíte na problém, </span>
+                <Link to="/contact" className="font-semibold underline hover:text-blue-900">
+                  kontaktujte mě
+                </Link>
+                <span>. Chvíli potrvá, než to bude perfektní.</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleDisclaimerDismiss}
+              className="text-blue-600 hover:text-blue-800 p-1 flex-shrink-0"
+              aria-label="Zavřít disclaimer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  )
+
   if (!isAuthenticated) {
     if (isPublicListingPage) {
       return (
         <div className="min-h-screen">
+          <DisclaimerBanner />
           <nav className="glass sticky top-0 z-50 pt-safe-top">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex justify-between items-center min-h-[56px] sm:min-h-16">
@@ -148,6 +188,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen">
+      <DisclaimerBanner />
       <nav className="glass sticky top-0 z-50 pt-safe-top">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center min-h-[56px] sm:min-h-16">

@@ -1,3 +1,5 @@
 - proper registration - confirmation email
 - add 3rd party registration services (Google...)
 - filter by distance from address
+- admin access
+- custom domain
