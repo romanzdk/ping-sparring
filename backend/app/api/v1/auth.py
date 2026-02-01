@@ -1,3 +1,4 @@
+import logging
 from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -91,7 +92,6 @@ async def register(user_data: UserRegister, db: AsyncSession = Depends(get_db)) 
         email_sent = True
     except Exception as e:
         # Log the error but don't fail registration
-        import logging
         logging.error("Failed to send verification email to %s: %s", user.email, str(e))
 
     if email_sent:
@@ -158,7 +158,6 @@ async def forgot_password(
             )
             await send_password_reset_email(user.email, reset_link)
         except Exception as e:
-            import logging
             logging.error("Failed to send password reset email to %s: %s", user.email, str(e))
     return {"detail": "Pokud účet s tímto e-mailem existuje, byl odeslán odkaz pro obnovu hesla."}
 
@@ -235,11 +234,14 @@ async def resend_verification(
     result = await db.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
     if user and not user.email_verified:
-        token = create_email_verification_token(user.email)
-        verification_link = "{}/verify-email?token={}".format(
-            settings.FRONTEND_URL.rstrip("/"), token
-        )
-        await send_verification_email(user.email, verification_link)
+        try:
+            token = create_email_verification_token(user.email)
+            verification_link = "{}/verify-email?token={}".format(
+                settings.FRONTEND_URL.rstrip("/"), token
+            )
+            await send_verification_email(user.email, verification_link)
+        except Exception as e:
+            logging.error("Failed to resend verification email to %s: %s", user.email, str(e))
     return {"detail": "Pokud účet s tímto e-mailem existuje a není ověřen, byl odeslán nový odkaz pro ověření."}
 
 
