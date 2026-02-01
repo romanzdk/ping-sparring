@@ -17,7 +17,7 @@ Systém pro párování stolně-tenisových tréninků - automatizovaná platfor
 - **Backend**: FastAPI (Python 3.11+), SQLAlchemy 2.0 (async), PostgreSQL
 - **Frontend**: React 18, TypeScript, Vite
 - **Autentizace**: JWT tokens
-- **Email**: SMTP
+- **Email**: Resend (SMTP fallback)
 
 ## Požadavky
 
@@ -50,29 +50,36 @@ Upravte následující hodnoty v `.env`:
 
 **Důležité pro Docker**: Docker Compose automaticky načítá hodnoty z `.env` souboru. Pokud `.env` neexistuje nebo proměnné chybí, použijí se default hodnoty z `docker-compose.yml`.
 
-### Nastavení SMTP pro emaily
+### Nastavení emailů
 
-Pro fungování emailů (notifikace, reset hesla, verifikace emailu) je potřeba nastavit SMTP:
+Pro fungování emailů (notifikace, reset hesla, verifikace emailu) podporuje aplikace tyto providery:
 
-**Gmail:**
-1. Vytvořte "App Password" v Google Account: https://myaccount.google.com/apppasswords
+**Resend (doporučeno):**
+1. Vytvořte účet na https://resend.com
 2. V `.env` nastavte:
    ```
+   EMAIL_PROVIDER=resend
+   EMAIL_FROM="Ping Sparring <noreply@pingsparring.cz>"
+   RESEND_API_KEY=re_xxxxxxxxxxxx
+   ```
+
+**SMTP (fallback):**
+1. Pro Gmail: Vytvořte "App Password" v Google Account: https://myaccount.google.com/apppasswords
+2. V `.env` nastavte:
+   ```
+   EMAIL_PROVIDER=smtp
    SMTP_HOST=smtp.gmail.com
    SMTP_PORT=587
    SMTP_USER=vase-email@gmail.com
    SMTP_PASSWORD=app-password-z-google
    SMTP_FROM_EMAIL=noreply@pingsparring.cz
    ```
+3. Port 587 používá STARTTLS (automaticky detekováno)
+4. Port 465 používá přímé TLS spojení
 
-**Jiný SMTP server:**
-- Port 587 používá STARTTLS (automaticky detekováno)
-- Port 465 používá přímé TLS spojení
-- Nastavte `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` podle vašeho providera
-
-**Bez SMTP konfigurace:**
-- V development módu se emaily pouze vypisují do konzole backend kontejneru
-- Pro produkci je SMTP konfigurace povinná
+**Development (console):**
+- V development módu nastavte `EMAIL_PROVIDER=console`
+- Emaily se pouze vypisují do konzole backend kontejneru
 
 ### 3. Spuštění s Docker Compose
 
