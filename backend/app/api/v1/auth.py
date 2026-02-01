@@ -80,17 +80,31 @@ async def register(user_data: UserRegister, db: AsyncSession = Depends(get_db)) 
     await db.commit()
     await db.refresh(user)
 
-    # Send verification email
-    token = create_email_verification_token(user.email)
-    verification_link = "{}/verify-email?token={}".format(
-        settings.FRONTEND_URL.rstrip("/"), token
-    )
-    await send_verification_email(user.email, verification_link)
+    # Send verification email (non-blocking - registration succeeds even if email fails)
+    email_sent = False
+    try:
+        token = create_email_verification_token(user.email)
+        verification_link = "{}/verify-email?token={}".format(
+            settings.FRONTEND_URL.rstrip("/"), token
+        )
+        await send_verification_email(user.email, verification_link)
+        email_sent = True
+    except Exception as e:
+        # Log the error but don't fail registration
+        import logging
+        logging.error("Failed to send verification email to %s: %s", user.email, str(e))
 
-    return {
-        "detail": "Registrace úspěšná. Na váš e-mail byl odeslán odkaz pro ověření.",
-        "email": user.email,
-    }
+    if email_sent:
+        return {
+            "detail": "Registrace úspěšná. Na váš e-mail byl odeslán odkaz pro ověření.",
+            "email": user.email,
+        }
+    else:
+        return {
+            "detail": "Registrace úspěšná. Verifikační e-mail se nepodařilo odeslat - můžete ho nechat znovu odeslat po přihlášení.",
+            "email": user.email,
+            "email_sent": False,
+        }
 
 
 @router.post("/login")
@@ -137,11 +151,15 @@ async def forgot_password(
     result = await db.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
     if user:
-        token = create_password_reset_token(user.email)
-        reset_link = "{}/reset-password?token={}".format(
-            settings.FRONTEND_URL.rstrip("/"), token
-        )
-        await send_password_reset_email(user.email, reset_link)
+        try:
+            token = create_password_reset_token(user.email)
+            reset_link = "{}/reset-password?token={}".format(
+                settings.FRONTEND_URL.rstrip("/"), token
+            )
+            await send_password_reset_email(user.email, reset_link)
+        except Exception as e:
+            import logging
+            logging.error("Failed to send password reset email to %s: %s", user.email, str(e))
     return {"detail": "Pokud účet s tímto e-mailem existuje, byl odeslán odkaz pro obnovu hesla."}
 
 
