@@ -21,6 +21,7 @@ from app.schemas.registration import (
 from app.services.notifications import (
     send_player_registered_to_club_notification,
     send_player_unregistered_to_club_notification,
+    send_registration_approved_notification,
     send_registration_rejected_notification,
 )
 from app.services.reputation import update_reputation_score
@@ -597,6 +598,14 @@ async def approve_registration(
     # Approve registration
     registration.status = RegistrationStatus.APPROVED
     registration.approved_at = datetime.utcnow()
+
+    # Notify player
+    result = await db.execute(
+        select(User).join(Player, Player.user_id == User.id).where(Player.id == registration.player_id)
+    )
+    player_user = result.scalar_one_or_none()
+    if player_user:
+        await send_registration_approved_notification(player_user, registration, session, db)
 
     await db.commit()
     await db.refresh(registration)
