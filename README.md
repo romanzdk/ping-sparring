@@ -46,7 +46,33 @@ cp .env.example .env
 Upravte následující hodnoty v `.env`:
 - `DATABASE_URL` - URL PostgreSQL databáze
 - `SECRET_KEY` - Tajný klíč pro JWT (vygenerujte náhodný řetězec)
-- `SMTP_*` - Nastavení email serveru (pro notifikace)
+- `SMTP_*` - Nastavení email serveru (pro notifikace a verifikaci emailu)
+
+**Důležité pro Docker**: Docker Compose automaticky načítá hodnoty z `.env` souboru. Pokud `.env` neexistuje nebo proměnné chybí, použijí se default hodnoty z `docker-compose.yml`.
+
+### Nastavení SMTP pro emaily
+
+Pro fungování emailů (notifikace, reset hesla, verifikace emailu) je potřeba nastavit SMTP:
+
+**Gmail:**
+1. Vytvořte "App Password" v Google Account: https://myaccount.google.com/apppasswords
+2. V `.env` nastavte:
+   ```
+   SMTP_HOST=smtp.gmail.com
+   SMTP_PORT=587
+   SMTP_USER=vase-email@gmail.com
+   SMTP_PASSWORD=app-password-z-google
+   SMTP_FROM_EMAIL=noreply@pingsparring.cz
+   ```
+
+**Jiný SMTP server:**
+- Port 587 používá STARTTLS (automaticky detekováno)
+- Port 465 používá přímé TLS spojení
+- Nastavte `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` podle vašeho providera
+
+**Bez SMTP konfigurace:**
+- V development módu se emaily pouze vypisují do konzole backend kontejneru
+- Pro produkci je SMTP konfigurace povinná
 
 ### 3. Spuštění s Docker Compose
 
@@ -142,8 +168,12 @@ ping-sparring/
 ## API Endpoints
 
 ### Autentizace
-- `POST /api/v1/auth/register` - Registrace
-- `POST /api/v1/auth/login` - Přihlášení
+- `POST /api/v1/auth/register` - Registrace (odesílá verifikační email)
+- `POST /api/v1/auth/login` - Přihlášení (vrací `email_verified` status)
+- `POST /api/v1/auth/verify-email` - Ověření emailu pomocí tokenu
+- `POST /api/v1/auth/resend-verification` - Znovu odeslat verifikační email
+- `POST /api/v1/auth/forgot-password` - Požádat o reset hesla
+- `POST /api/v1/auth/reset-password` - Nastavit nové heslo pomocí tokenu
 - `GET /api/v1/auth/me` - Aktuální uživatel
 
 ### Tréninky
@@ -176,7 +206,11 @@ Kompletní API dokumentace: `http://localhost:8000/docs`
 
 1. Přejděte na `/register`
 2. Vyplňte email, heslo a vyberte roli "Hráč"
-3. Po registraci budete automaticky přihlášeni
+3. Po registraci obdržíte email s odkazem pro ověření
+4. Klikněte na odkaz v emailu pro ověření vaší emailové adresy
+5. Po ověření se můžete přihlásit na `/login`
+
+**Poznámka**: Přihlášení je možné i bez ověření emailu, ale aplikace zobrazí varování a některé funkce mohou být omezené.
 
 ### Vytvoření tréninku (organizátor)
 

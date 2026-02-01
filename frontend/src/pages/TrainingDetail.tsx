@@ -22,6 +22,8 @@ export default function TrainingDetail() {
   const [registering, setRegistering] = useState(false)
   const [cancelling, setCancelling] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [approvingId, setApprovingId] = useState<number | null>(null)
+  const [rejectingId, setRejectingId] = useState<number | null>(null)
 
   useEffect(() => {
     if (id && !authLoading) {
@@ -100,6 +102,51 @@ export default function TrainingDetail() {
     }
   }
 
+  const handleApproveRegistration = async (registrationId: number) => {
+    setApprovingId(registrationId)
+    try {
+      await api.post(`/api/v1/registrations/${registrationId}/approve`)
+      await loadData()
+      const notif = document.createElement('div')
+      notif.className = 'fixed top-4 right-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-4 rounded-xl shadow-2xl animate-scale-in z-50'
+      notif.innerHTML = '✓ Přihláška byla schválena.'
+      document.body.appendChild(notif)
+      setTimeout(() => notif.remove(), 3000)
+    } catch (err: any) {
+      const notif = document.createElement('div')
+      notif.className = 'fixed top-4 right-4 bg-gradient-to-r from-red-500 to-pink-600 text-white px-6 py-4 rounded-xl shadow-2xl animate-scale-in z-50'
+      notif.innerHTML = '✗ ' + (err.response?.data?.detail || 'Schválení se nepovedlo.')
+      document.body.appendChild(notif)
+      setTimeout(() => notif.remove(), 3000)
+    } finally {
+      setApprovingId(null)
+    }
+  }
+
+  const handleRejectRegistration = async (registrationId: number) => {
+    if (!window.confirm('Opravdu chcete tuto přihlášku odmítnout? Hráč dostane notifikaci.')) {
+      return
+    }
+    setRejectingId(registrationId)
+    try {
+      await api.post(`/api/v1/registrations/${registrationId}/reject`)
+      await loadData()
+      const notif = document.createElement('div')
+      notif.className = 'fixed top-4 right-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-4 rounded-xl shadow-2xl animate-scale-in z-50'
+      notif.innerHTML = '✓ Přihláška byla odmítnuta.'
+      document.body.appendChild(notif)
+      setTimeout(() => notif.remove(), 3000)
+    } catch (err: any) {
+      const notif = document.createElement('div')
+      notif.className = 'fixed top-4 right-4 bg-gradient-to-r from-red-500 to-pink-600 text-white px-6 py-4 rounded-xl shadow-2xl animate-scale-in z-50'
+      notif.innerHTML = '✗ ' + (err.response?.data?.detail || 'Odmítnutí se nepovedlo.')
+      document.body.appendChild(notif)
+      setTimeout(() => notif.remove(), 3000)
+    } finally {
+      setRejectingId(null)
+    }
+  }
+
   const handleUnregister = async (registrationId: number) => {
     if (!window.confirm('Opravdu se chcete z tohoto tréninku odhlásit? Klub dostane notifikaci.')) {
       return
@@ -142,7 +189,7 @@ export default function TrainingDetail() {
     }
   }
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, viewerIsClub?: boolean) => {
     switch (status) {
       case 'approved':
         return <span className="badge badge-success flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Schváleno</span>
@@ -153,7 +200,11 @@ export default function TrainingDetail() {
       case 'waitlist':
         return <span className="badge badge-info flex items-center gap-1"><List className="w-3 h-3" /> Čekací listina</span>
       case 'cancelled':
-        return <span className="badge badge-secondary">Odhlásili jste se</span>
+        return (
+          <span className="badge badge-secondary">
+            {viewerIsClub ? 'Odhlásil se' : 'Odhlásili jste se'}
+          </span>
+        )
       default:
         return <span className="badge badge-info">{status}</span>
     }
@@ -461,7 +512,37 @@ export default function TrainingDetail() {
                                       <span className="font-medium text-gray-900">
                                         {detail.player_name || `Hráč #${r.player_id}`}
                                       </span>
-                                      {getStatusBadge(String(r.status))}
+                                      {getStatusBadge(String(r.status), true)}
+                                      {String(r.status) === 'pending' && (
+                                        <span className="ml-2 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleApproveRegistration(r.id)}
+                                            disabled={approvingId !== null || rejectingId !== null}
+                                            className="btn btn-primary text-xs py-1 px-2 flex items-center gap-1"
+                                          >
+                                            {approvingId === r.id ? (
+                                              <div className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent" />
+                                            ) : (
+                                              <CheckCircle className="w-3.5 h-3.5" />
+                                            )}
+                                            Schválit
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleRejectRegistration(r.id)}
+                                            disabled={approvingId !== null || rejectingId !== null}
+                                            className="btn flex items-center gap-1 text-xs py-1 px-2 border-2 border-red-200 text-red-600 hover:bg-red-50"
+                                          >
+                                            {rejectingId === r.id ? (
+                                              <div className="animate-spin rounded-full h-3 w-3 border-2 border-red-600 border-t-transparent" />
+                                            ) : (
+                                              <XCircle className="w-3.5 h-3.5" />
+                                            )}
+                                            Odmítnout
+                                          </button>
+                                        </span>
+                                      )}
                                     </button>
                                     {isExpanded && (
                                       <div className="px-3 pb-3 pt-0 space-y-2 text-sm border-t border-gray-200 bg-white">
@@ -539,25 +620,30 @@ export default function TrainingDetail() {
                           <div className="text-gray-400 font-medium">Proběhlo</div>
                         ) : isPlayer ? (
                           registration ? (
-                            String(registration.status) === 'cancelled' ? (
-                              <button
-                                type="button"
-                                onClick={() => handleRegister(session.id)}
-                                disabled={registering || !isScheduled}
-                                className="btn btn-primary flex items-center justify-center w-full sm:w-auto"
-                              >
-                                {registering ? (
-                                  <>
-                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                    Přihlašování...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Zap className="w-4 h-4 mr-2" />
-                                    Přihlásit se znovu
-                                  </>
+                            String(registration.status) === 'cancelled' || String(registration.status) === 'rejected' ? (
+                              <div className="flex flex-wrap items-center gap-2">
+                                {String(registration.status) === 'rejected' && (
+                                  <span className="text-sm text-gray-600">Přihláška byla zamítnuta.</span>
                                 )}
-                              </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRegister(session.id)}
+                                  disabled={registering || !isScheduled}
+                                  className="btn btn-primary flex items-center justify-center w-full sm:w-auto"
+                                >
+                                  {registering ? (
+                                    <>
+                                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                      Přihlašování...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Zap className="w-4 h-4 mr-2" />
+                                      Přihlásit se znovu
+                                    </>
+                                  )}
+                                </button>
+                              </div>
                             ) : (
                               <div className="flex flex-wrap items-center gap-2">
                                 <button

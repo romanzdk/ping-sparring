@@ -18,6 +18,7 @@ class UserResponse(UserBase):
     first_name: str | None
     last_name: str | None
     created_at: datetime
+    email_verified: bool = False
     club_name: str | None = None  # filled for role=club from Club model
 
     class Config:

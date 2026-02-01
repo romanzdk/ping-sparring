@@ -15,6 +15,15 @@ class UserLogin(BaseModel):
     password: str
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
 class UserRegister(BaseModel):
     email: EmailStr
     password: str
@@ -33,3 +42,11 @@ class UserRegister(BaseModel):
             if not (self.first_name and self.first_name.strip()):
                 raise ValueError("Pro registraci hráče je povinné alespoň křestní jméno.")
         return self
+
+
+class VerifyEmailRequest(BaseModel):
+    token: str
+
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr

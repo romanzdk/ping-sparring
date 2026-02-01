@@ -21,6 +21,7 @@ from app.schemas.registration import (
 from app.services.notifications import (
     send_player_registered_to_club_notification,
     send_player_unregistered_to_club_notification,
+    send_registration_rejected_notification,
 )
 from app.services.reputation import update_reputation_score
 
@@ -66,13 +67,15 @@ async def create_registration(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Termín tréninku není naplánován"
         )
 
-    # Check if already registered (excluding cancelled registrations)
+    # Check if already registered (excluding cancelled and rejected – those can re-apply)
     result = await db.execute(
         select(Registration).where(
             and_(
                 Registration.player_id == player.id,
                 Registration.training_session_id == session.id,
-                Registration.status != RegistrationStatus.CANCELLED,
+                Registration.status.notin_(
+                    [RegistrationStatus.CANCELLED, RegistrationStatus.REJECTED]
+                ),
             )
         )
     )
@@ -92,6 +95,18 @@ async def create_registration(
         )
     )
     previous_cancelled_registration = result.scalar_one_or_none()
+
+    # Check if player previously rejected and wants to re-apply
+    result = await db.execute(
+        select(Registration).where(
+            and_(
+                Registration.player_id == player.id,
+                Registration.training_session_id == session.id,
+                Registration.status == RegistrationStatus.REJECTED,
+            )
+        )
+    )
+    previous_rejected_registration = result.scalar_one_or_none()
 
     # If player cancelled before, check if they can rejoin
     if previous_cancelled_registration:
@@ -133,7 +148,7 @@ async def create_registration(
     else:
         reg_status = RegistrationStatus.WAITLIST
 
-    # Reuse cancelled registration or create new one
+    # Reuse cancelled/rejected registration or create new one
     if previous_cancelled_registration:
         # Rejoin: reuse the existing registration
         registration = previous_cancelled_registration
@@ -142,8 +157,18 @@ async def create_registration(
             datetime.utcnow() if reg_status == RegistrationStatus.APPROVED else None
         )
         registration.cancelled_at = None
+        registration.rejected_at = None
         registration.rejoin_count += 1
         registration.created_at = datetime.utcnow()  # Update created_at to reflect rejoin time
+    elif previous_rejected_registration:
+        # Re-apply after reject: reuse the existing registration
+        registration = previous_rejected_registration
+        registration.status = reg_status
+        registration.approved_at = (
+            datetime.utcnow() if reg_status == RegistrationStatus.APPROVED else None
+        )
+        registration.rejected_at = None
+        registration.created_at = datetime.utcnow()
     else:
         # Create new registration
         registration = Registration(
@@ -624,6 +649,14 @@ async def reject_registration(
     # Reject registration
     registration.status = RegistrationStatus.REJECTED
     registration.rejected_at = datetime.utcnow()
+
+    # Notify player
+    result = await db.execute(
+        select(User).join(Player, Player.user_id == User.id).where(Player.id == registration.player_id)
+    )
+    player_user = result.scalar_one_or_none()
+    if player_user:
+        await send_registration_rejected_notification(player_user, registration, session, db)
 
     await db.commit()
     await db.refresh(registration)

@@ -24,6 +24,7 @@ class Registration(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     approved_at = Column(DateTime, nullable=True)
     cancelled_at = Column(DateTime, nullable=True)
+    rejected_at = Column(DateTime, nullable=True)
     rejoin_count = Column(
         Integer, default=0, nullable=False
     )  # Tracks how many times player rejoined after cancelling

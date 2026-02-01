@@ -56,6 +56,24 @@ async def get_password_hash(password: str) -> str:
     return await asyncio.to_thread(_get_password_hash_sync, password)
 
 
+def create_password_reset_token(email: str) -> str:
+    """Create a short-lived JWT for password reset. Payload: sub=email."""
+    expire = datetime.utcnow() + timedelta(
+        minutes=settings.PASSWORD_RESET_TOKEN_EXPIRE_MINUTES
+    )
+    to_encode = {"sub": email, "exp": expire, "type": "password_reset"}
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
+def create_email_verification_token(email: str) -> str:
+    """Create a JWT for email verification. Payload: sub=email, type=email_verification."""
+    expire = datetime.utcnow() + timedelta(
+        minutes=settings.EMAIL_VERIFICATION_TOKEN_EXPIRE_MINUTES
+    )
+    to_encode = {"sub": email, "exp": expire, "type": "email_verification"}
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
 def decode_token(token: str) -> dict[str, Any] | None:
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])

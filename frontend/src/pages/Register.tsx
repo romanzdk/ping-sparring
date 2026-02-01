@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { Mail, Lock, UserPlus, User, Home } from 'lucide-react'
+import { Mail, Lock, UserPlus, User, Home, CheckCircle } from 'lucide-react'
 
 export default function Register() {
   const [email, setEmail] = useState('')
@@ -12,8 +12,9 @@ export default function Register() {
   const [clubName, setClubName] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [success, setSuccess] = useState(false)
+  const [registeredEmail, setRegisteredEmail] = useState('')
   const { register } = useAuth()
-  const navigate = useNavigate()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -28,10 +29,15 @@ export default function Register() {
     }
     setLoading(true)
     try {
-      await register(email, password, role, firstName.trim() || undefined, lastName.trim() || undefined, clubName.trim() || undefined)
-      navigate('/dashboard')
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Registrace selhala. Zkuste to znovu.')
+      const result = await register(email, password, role, firstName.trim() || undefined, lastName.trim() || undefined, clubName.trim() || undefined)
+      setRegisteredEmail(result.email)
+      setSuccess(true)
+    } catch (err: unknown) {
+      const detail =
+        err && typeof err === 'object' && 'response' in err
+          ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
+          : undefined
+      setError(detail || 'Registrace selhala. Zkuste to znovu.')
     } finally {
       setLoading(false)
     }
@@ -63,6 +69,24 @@ export default function Register() {
         </div>
 
         <div className="card animate-scale-in">
+          {success ? (
+            <div className="space-y-6">
+              <div className="bg-emerald-50 border-2 border-emerald-200 text-emerald-800 px-4 py-4 rounded-xl font-medium flex items-start gap-3">
+                <CheckCircle className="w-6 h-6 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold mb-1">Registrace úspěšná!</p>
+                  <p>Na adresu <strong>{registeredEmail}</strong> jsme odeslali e-mail s odkazem pro ověření.</p>
+                  <p className="mt-2 text-sm">Zkontrolujte svou e-mailovou schránku (i složku spam) a klikněte na odkaz pro dokončení registrace.</p>
+                </div>
+              </div>
+              <Link
+                to="/login"
+                className="btn btn-primary w-full flex items-center justify-center text-lg"
+              >
+                Přejít na přihlášení
+              </Link>
+            </div>
+          ) : (
           <form className="space-y-6" onSubmit={handleSubmit}>
             {error && (
               <div className="bg-red-50 border-2 border-red-200 text-red-700 px-4 py-3 rounded-xl font-medium animate-scale-in">
@@ -203,6 +227,7 @@ export default function Register() {
               </button>
             </div>
           </form>
+          )}
 
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">

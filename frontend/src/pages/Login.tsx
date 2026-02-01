@@ -1,14 +1,17 @@
 import { useState } from 'react'
 import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { Mail, Lock, LogIn, Home } from 'lucide-react'
+import { Mail, Lock, LogIn, Home, AlertTriangle, Send } from 'lucide-react'
 
 export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const { login } = useAuth()
+  const [emailNotVerified, setEmailNotVerified] = useState(false)
+  const [resendLoading, setResendLoading] = useState(false)
+  const [resendSuccess, setResendSuccess] = useState(false)
+  const { login, resendVerification } = useAuth()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const nextUrl = searchParams.get('next') || '/dashboard'
@@ -16,15 +19,37 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setEmailNotVerified(false)
+    setResendSuccess(false)
     setLoading(true)
 
     try {
-      await login(email, password)
+      const result = await login(email, password)
+      if (!result.email_verified) {
+        setEmailNotVerified(true)
+      }
+      // Navigate to dashboard even if email not verified (user can still use the app)
       navigate(nextUrl.startsWith('/') ? nextUrl : '/dashboard')
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Přihlášení selhalo. Zkontrolujte email a heslo.')
+    } catch (err: unknown) {
+      const detail =
+        err && typeof err === 'object' && 'response' in err
+          ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
+          : undefined
+      setError(detail || 'Přihlášení selhalo. Zkontrolujte email a heslo.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleResendVerification = async () => {
+    setResendLoading(true)
+    try {
+      await resendVerification(email)
+      setResendSuccess(true)
+    } catch {
+      // Silently fail - we don't want to reveal if email exists
+    } finally {
+      setResendLoading(false)
     }
   }
 
@@ -57,6 +82,32 @@ export default function Login() {
 
         <div className="card animate-scale-in">
           <p className="text-sm text-gray-600 mb-4">Pole označená <span className="text-red-600 font-semibold">*</span> jsou povinná.</p>
+          
+          {emailNotVerified && (
+            <div className="bg-amber-50 border-2 border-amber-200 text-amber-800 px-4 py-3 rounded-xl font-medium animate-scale-in mb-4">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold">E-mail není ověřen</p>
+                  <p className="text-sm mt-1">Pro plné využití služby prosím ověřte svůj e-mail.</p>
+                  {!resendSuccess ? (
+                    <button
+                      type="button"
+                      onClick={handleResendVerification}
+                      disabled={resendLoading}
+                      className="mt-2 text-sm font-bold text-amber-700 hover:text-amber-900 flex items-center gap-1"
+                    >
+                      <Send className="w-4 h-4" />
+                      {resendLoading ? 'Odesílám...' : 'Znovu odeslat ověřovací e-mail'}
+                    </button>
+                  ) : (
+                    <p className="text-sm mt-2 text-emerald-700 font-medium">Ověřovací e-mail byl odeslán!</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+          
           <form className="space-y-6" onSubmit={handleSubmit}>
             {error && (
               <div className="bg-red-50 border-2 border-red-200 text-red-700 px-4 py-3 rounded-xl font-medium animate-scale-in">
@@ -101,6 +152,14 @@ export default function Login() {
                   className="input pl-12"
                   placeholder="••••••••"
                 />
+              </div>
+              <div className="mt-2 text-right">
+                <Link
+                  to="/forgot-password"
+                  className="text-sm font-bold text-teal-600 hover:text-teal-700 transition-colors"
+                >
+                  Zapomenuté heslo?
+                </Link>
               </div>
             </div>
 

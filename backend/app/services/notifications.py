@@ -17,12 +17,27 @@ from app.models.training import Training, TrainingSession
 from app.models.registration import Registration, RegistrationStatus
 
 
-async def send_email(to_email: str, subject: str, body: str):
-    """Send an email via SMTP."""
+async def send_email(to_email: str, subject: str, body: str) -> bool:
+    """Send an email via SMTP.
+    
+    Returns True if email was sent successfully, False otherwise.
+    
+    Note: Port 587 uses STARTTLS (start_tls=True), Port 465 uses direct TLS (use_tls=True).
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    
     if not settings.SMTP_USER or not settings.SMTP_PASSWORD:
         # In development, just print to console
-        print(f"Email to {to_email}: {subject}\n{body}")
-        return
+        logger.info("SMTP not configured, printing email to console")
+        print("=" * 60)
+        print("EMAIL (dev mode - not actually sent)")
+        print("To: %s", to_email)
+        print("Subject: %s", subject)
+        print("-" * 60)
+        print(body)
+        print("=" * 60)
+        return True
 
     message = EmailMessage()
     message["From"] = settings.SMTP_FROM_EMAIL
@@ -31,16 +46,85 @@ async def send_email(to_email: str, subject: str, body: str):
     message.set_content(body)
 
     try:
-        await aiosmtplib.send(
-            message,
-            hostname=settings.SMTP_HOST,
-            port=settings.SMTP_PORT,
-            username=settings.SMTP_USER,
-            password=settings.SMTP_PASSWORD,
-            use_tls=True,
-        )
+        # Port 587 uses STARTTLS - connect plain, then upgrade to TLS
+        # Port 465 uses direct TLS connection (use_tls=True)
+        if settings.SMTP_PORT == 465:
+            await aiosmtplib.send(
+                message,
+                hostname=settings.SMTP_HOST,
+                port=settings.SMTP_PORT,
+                username=settings.SMTP_USER,
+                password=settings.SMTP_PASSWORD,
+                use_tls=True,
+            )
+        else:
+            # Port 587 or other - use STARTTLS
+            await aiosmtplib.send(
+                message,
+                hostname=settings.SMTP_HOST,
+                port=settings.SMTP_PORT,
+                username=settings.SMTP_USER,
+                password=settings.SMTP_PASSWORD,
+                start_tls=True,
+            )
+        logger.info("Email sent successfully to %s", to_email)
+        return True
+    except aiosmtplib.SMTPAuthenticationError as e:
+        logger.error("SMTP authentication failed: %s", e)
+        return False
+    except aiosmtplib.SMTPConnectError as e:
+        logger.error("Failed to connect to SMTP server: %s", e)
+        return False
     except Exception as e:
-        print(f"Failed to send email: {e}")
+        logger.error("Failed to send email to %s: %s", to_email, e)
+        return False
+
+
+async def send_password_reset_email(to_email: str, reset_link: str) -> None:
+    """Send email with link to reset password."""
+    subject = "Obnovení hesla – Ping Sparring"
+    body = """
+Dobrý den,
+
+obdrželi jste tento e-mail, protože byl požadován reset hesla k vašemu účtu.
+
+Pro nastavení nového hesla klikněte na odkaz níže (platný 1 hodinu):
+
+{reset_link}
+
+Pokud jste o obnovu hesla nepožádali, tento e-mail ignorujte. Vaše heslo zůstane beze změny.
+
+S pozdravem,
+tým Ping Sparring
+""".format(
+        reset_link=reset_link
+    ).strip()
+    await send_email(to_email, subject, body)
+
+
+async def send_verification_email(to_email: str, verification_link: str) -> bool:
+    """Send email with link to verify email address.
+    
+    Returns True if email was sent successfully, False otherwise.
+    """
+    subject = "Ověření e-mailu – Ping Sparring"
+    body = """
+Dobrý den,
+
+děkujeme za registraci na Ping Sparring!
+
+Pro dokončení registrace a ověření vaší e-mailové adresy klikněte na odkaz níže (platný 24 hodin):
+
+{verification_link}
+
+Pokud jste se neregistrovali na Ping Sparring, tento e-mail ignorujte.
+
+S pozdravem,
+tým Ping Sparring
+""".format(
+        verification_link=verification_link
+    ).strip()
+    return await send_email(to_email, subject, body)
 
 
 async def create_notification(
