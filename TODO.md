@@ -3,4 +3,3 @@
 - add 3rd party registration services (Google...)
 - filter by distance from address
 - redesign landing page
-- async

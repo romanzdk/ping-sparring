@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime, timedelta
 from typing import Any
 from jose import jwt
@@ -17,12 +18,10 @@ def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = 
     return encoded_jwt
 
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against a bcrypt hash."""
+def _verify_password_sync(plain_password: str, hashed_password: str) -> bool:
+    """Synchronous password verification - internal use only."""
     try:
-        # Ensure password is bytes
         password_bytes = plain_password.encode("utf-8")
-        # Ensure hash is bytes
         hash_bytes = (
             hashed_password.encode("utf-8") if isinstance(hashed_password, str) else hashed_password
         )
@@ -31,15 +30,30 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         return False
 
 
-def get_password_hash(password: str) -> str:
-    """Hash a password using bcrypt."""
-    # Ensure password is bytes
+async def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a password against a bcrypt hash.
+    
+    Runs in a thread pool to avoid blocking the event loop,
+    as bcrypt operations can take 100-500ms.
+    """
+    return await asyncio.to_thread(_verify_password_sync, plain_password, hashed_password)
+
+
+def _get_password_hash_sync(password: str) -> str:
+    """Synchronous password hashing - internal use only."""
     password_bytes = password.encode("utf-8")
-    # Generate salt and hash
     salt = bcrypt.gensalt()
     hashed = bcrypt.hashpw(password_bytes, salt)
-    # Return as string
     return hashed.decode("utf-8")
+
+
+async def get_password_hash(password: str) -> str:
+    """Hash a password using bcrypt.
+    
+    Runs in a thread pool to avoid blocking the event loop,
+    as bcrypt operations can take 100-500ms.
+    """
+    return await asyncio.to_thread(_get_password_hash_sync, password)
 
 
 def decode_token(token: str) -> dict[str, Any] | None:
