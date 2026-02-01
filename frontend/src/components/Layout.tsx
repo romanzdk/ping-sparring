@@ -1,17 +1,35 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useNotifications } from '../hooks/useNotifications'
-import { LogOut, User, Home, Calendar, Bell, Users, LogIn, UserPlus, Menu, X, Mail } from 'lucide-react'
+import { LogOut, User, Home, Calendar, Bell, Users, LogIn, UserPlus, Menu, X, Mail, AlertTriangle, Send } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 const navLinkClass = "flex items-center min-h-[44px] px-4 py-3 text-base font-semibold text-gray-700 hover:text-teal-600 rounded-xl hover:bg-teal-50/80 transition-all w-full sm:w-auto"
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const { user, logout, isAuthenticated } = useAuth()
+  const { user, logout, isAuthenticated, resendVerification } = useAuth()
   const { unreadCount, refetch } = useNotifications()
   const navigate = useNavigate()
   const location = useLocation()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [resendLoading, setResendLoading] = useState(false)
+  const [resendSuccess, setResendSuccess] = useState(false)
+  const [bannerDismissed, setBannerDismissed] = useState(false)
+
+  const handleResendVerification = async () => {
+    if (!user?.email) return
+    setResendLoading(true)
+    try {
+      await resendVerification(user.email)
+      setResendSuccess(true)
+    } catch {
+      // Silently fail
+    } finally {
+      setResendLoading(false)
+    }
+  }
+
+  const showEmailBanner = isAuthenticated && user && !user.email_verified && !bannerDismissed
 
   useEffect(() => {
     if (isAuthenticated && location.pathname === '/notifications') {
@@ -195,6 +213,44 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           )}
         </div>
       </nav>
+      {showEmailBanner && (
+        <div className="bg-amber-50 border-b-2 border-amber-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+              <div className="flex items-start sm:items-center gap-2 text-amber-800">
+                <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5 sm:mt-0" />
+                <div>
+                  <span className="font-bold">E-mail není ověřen.</span>
+                  <span className="ml-1 text-sm">Prosím ověřte svůj e-mail pro plné využití služby.</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 ml-7 sm:ml-0">
+                {!resendSuccess ? (
+                  <button
+                    type="button"
+                    onClick={handleResendVerification}
+                    disabled={resendLoading}
+                    className="text-sm font-bold text-amber-700 hover:text-amber-900 flex items-center gap-1 whitespace-nowrap"
+                  >
+                    <Send className="w-4 h-4" />
+                    {resendLoading ? 'Odesílám...' : 'Znovu odeslat'}
+                  </button>
+                ) : (
+                  <span className="text-sm text-emerald-700 font-medium whitespace-nowrap">Odesláno!</span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setBannerDismissed(true)}
+                  className="text-amber-600 hover:text-amber-800 p-1"
+                  aria-label="Zavřít upozornění"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <main className="max-w-7xl mx-auto py-6 sm:py-8 px-4 sm:px-6 lg:px-8 pb-safe-bottom">
         {children}
       </main>

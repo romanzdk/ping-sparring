@@ -207,7 +207,7 @@ async def send_player_registered_to_club_notification(
     status: str,
     db: AsyncSession,
 ):
-    """Notify club when a player signs up for a training (in-app only)."""
+    """Notify club when a player signs up for a training (in-app + email)."""
     status_text = {
         "approved": "přihlásil se",
         "pending": "čeká na schválení",
@@ -215,8 +215,10 @@ async def send_player_registered_to_club_notification(
     }.get(status, "se přihlásil")
     date_str = session_date.strftime("%d.%m.%Y %H:%M")
     title = "Nová přihláška na trénink"
-    message = f"{player_name} {status_text} na trénink {training_title} ({date_str})."
-    action_url = f"/trainings/{training_id}"
+    message = "%s %s na trénink %s (%s)." % (player_name, status_text, training_title, date_str)
+    action_url = "/trainings/%s" % training_id
+
+    # Create in-app notification
     await create_notification(
         club_user_id,
         NotificationType.PLAYER_REGISTERED,
@@ -225,6 +227,31 @@ async def send_player_registered_to_club_notification(
         action_url,
         db,
     )
+
+    # Send email to club
+    result = await db.execute(select(User).where(User.id == club_user_id))
+    club_user = result.scalar_one_or_none()
+    if club_user:
+        email_body = """
+Dobrý den,
+
+máte novou přihlášku na trénink.
+
+Hráč: %s
+Trénink: %s
+Termín: %s
+Status: %s
+
+Více informací: %s%s
+""" % (
+            player_name,
+            training_title,
+            date_str,
+            status_text,
+            settings.FRONTEND_URL,
+            action_url,
+        )
+        await send_email(club_user.email, title, email_body.strip())
 
 
 async def send_player_unregistered_to_club_notification(
@@ -235,11 +262,13 @@ async def send_player_unregistered_to_club_notification(
     session_date: datetime,
     db: AsyncSession,
 ):
-    """Notify club when a player cancels their registration (in-app only)."""
+    """Notify club when a player cancels their registration (in-app + email)."""
     date_str = session_date.strftime("%d.%m.%Y %H:%M")
     title = "Zrušená přihláška"
-    message = f"{player_name} zrušil přihlášku na trénink {training_title} ({date_str})."
-    action_url = f"/trainings/{training_id}"
+    message = "%s zrušil přihlášku na trénink %s (%s)." % (player_name, training_title, date_str)
+    action_url = "/trainings/%s" % training_id
+
+    # Create in-app notification
     await create_notification(
         club_user_id,
         NotificationType.PLAYER_UNREGISTERED,
@@ -248,6 +277,29 @@ async def send_player_unregistered_to_club_notification(
         action_url,
         db,
     )
+
+    # Send email to club
+    result = await db.execute(select(User).where(User.id == club_user_id))
+    club_user = result.scalar_one_or_none()
+    if club_user:
+        email_body = """
+Dobrý den,
+
+hráč zrušil svou přihlášku na trénink.
+
+Hráč: %s
+Trénink: %s
+Termín: %s
+
+Více informací: %s%s
+""" % (
+            player_name,
+            training_title,
+            date_str,
+            settings.FRONTEND_URL,
+            action_url,
+        )
+        await send_email(club_user.email, title, email_body.strip())
 
 
 async def send_registration_rejected_notification(
@@ -412,7 +464,7 @@ async def send_training_updated_notification(
     day_names = ["pondělí", "úterý", "středa", "čtvrtek", "pátek", "sobota", "neděle"]
     day_name = day_names[training.day_of_week] if 0 <= training.day_of_week < 7 else ""
     time_str = "%s %s" % (day_name, training.start_time.strftime("%H:%M"))
-    club_name = training.club.user.club_name if training.club and training.club.user else "Klub"
+    club_name = training.club.club_name if training.club else "Klub"
     
     title = "Trénink byl upraven"
     message = "%s upravil trénink (%s), na který jste přihlášeni. Zkontrolujte změny." % (
@@ -445,7 +497,7 @@ async def send_training_removed_notification(
     day_names = ["pondělí", "úterý", "středa", "čtvrtek", "pátek", "sobota", "neděle"]
     day_name = day_names[training.day_of_week] if 0 <= training.day_of_week < 7 else ""
     time_str = "%s %s" % (day_name, training.start_time.strftime("%H:%M"))
-    club_name = training.club.user.club_name if training.club and training.club.user else "Klub"
+    club_name = training.club.club_name if training.club else "Klub"
     
     title = "Nabídka tréninku byla zrušena"
     message = "%s zrušil nabídku tréninku (%s), na který jste byli přihlášeni." % (
