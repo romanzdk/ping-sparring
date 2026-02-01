@@ -30,7 +30,7 @@ async def create_training_request(
     if current_user.role != UserRole.PLAYER:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only players can create training requests",
+            detail="Poptávky na tréninky mohou vytvářet pouze hráči",
         )
 
     # Get player
@@ -39,7 +39,7 @@ async def create_training_request(
 
     if not player:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Player profile not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Profil hráče nebyl nalezen"
         )
 
     # Limit: max 2 active (OPEN) requests per player
@@ -190,7 +190,7 @@ async def get_training_request(
 
     if not req:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Training request not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Poptávka na trénink nebyla nalezena"
         )
 
     # Check permissions
@@ -200,7 +200,7 @@ async def get_training_request(
 
         if player and req.player_id != player.id:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail="You can only view your own requests"
+                status_code=status.HTTP_403_FORBIDDEN, detail="Můžete zobrazit pouze své vlastní poptávky"
             )
 
     # Load player's user for contact email and name
@@ -245,7 +245,7 @@ async def update_training_request(
     if current_user.role != UserRole.PLAYER:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only players can update training requests",
+            detail="Poptávky na tréninky mohou upravovat pouze hráči",
         )
 
     result = await db.execute(select(TrainingRequest).where(TrainingRequest.id == request_id))
@@ -253,7 +253,7 @@ async def update_training_request(
 
     if not request:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Training request not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Poptávka na trénink nebyla nalezena"
         )
 
     # Get player
@@ -263,7 +263,7 @@ async def update_training_request(
     # Check ownership
     if player and request.player_id != player.id:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="You can only update your own requests"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Můžete upravovat pouze své vlastní poptávky"
         )
 
     # Update fields
@@ -306,7 +306,7 @@ async def delete_training_request(
     if current_user.role != UserRole.PLAYER:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only players can delete training requests",
+            detail="Poptávky na tréninky mohou mazat pouze hráči",
         )
 
     result = await db.execute(select(TrainingRequest).where(TrainingRequest.id == request_id))
@@ -314,7 +314,7 @@ async def delete_training_request(
 
     if not request:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Training request not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Poptávka na trénink nebyla nalezena"
         )
 
     # Get player
@@ -324,7 +324,7 @@ async def delete_training_request(
     # Check ownership
     if player and request.player_id != player.id:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="You can only delete your own requests"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Můžete mazat pouze své vlastní poptávky"
         )
 
     await db.delete(request)

@@ -36,7 +36,7 @@ async def create_registration(
     """Register for a training session."""
     if current_user.role != UserRole.PLAYER:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Only players can register for trainings"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Na tréninky se mohou přihlašovat pouze hráči"
         )
 
     # Get player
@@ -45,7 +45,7 @@ async def create_registration(
 
     if not player:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Player profile not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Profil hráče nebyl nalezen"
         )
 
     # Get session and training
@@ -58,12 +58,12 @@ async def create_registration(
 
     if not session:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Training session not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Termín tréninku nebyl nalezen"
         )
 
     if session.status != TrainingStatus.SCHEDULED:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Training session is not scheduled"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Termín tréninku není naplánován"
         )
 
     # Check if already registered (excluding cancelled registrations)
@@ -78,7 +78,7 @@ async def create_registration(
     )
     if result.scalar_one_or_none():
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Already registered for this session"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Na tento termín jste již přihlášeni"
         )
 
     # Check if player previously cancelled and wants to rejoin
@@ -98,7 +98,7 @@ async def create_registration(
         if previous_cancelled_registration.rejoin_count >= 1:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="You can only rejoin a training session once after cancelling",
+                detail="Po zrušení se můžete na termín znovu přihlásit pouze jednou",
             )
 
     training = session.training
@@ -110,7 +110,7 @@ async def create_registration(
     ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Your ELO is outside the allowed range for this training",
+            detail="Vaše ELO je mimo povolený rozsah pro tento trénink",
         )
 
     # Check capacity
@@ -202,7 +202,7 @@ async def get_my_registrations(
     """Get current user's registrations."""
     if current_user.role != UserRole.PLAYER:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Only players have registrations"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Registrace mají pouze hráči"
         )
 
     result = await db.execute(select(Player).where(Player.user_id == current_user.id))
@@ -221,7 +221,7 @@ async def get_my_registrations_detail(
     """Get current user's registrations with training and session info (for dashboard)."""
     if current_user.role != UserRole.PLAYER:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Only players have registrations"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Registrace mají pouze hráči"
         )
 
     result = await db.execute(select(Player).where(Player.user_id == current_user.id))
@@ -280,20 +280,20 @@ async def get_registration(
     if not registration:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Registration not found",
+            detail="Registrace nebyla nalezena",
         )
     session = registration.training_session
     if not session:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Session not found",
+            detail="Termín nebyl nalezen",
         )
     result = await db.execute(select(Training).where(Training.id == session.training_id))
     training = result.scalar_one_or_none()
     if not training:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Training not found",
+            detail="Trénink nebyl nalezen",
         )
 
     if current_user.role == UserRole.PLAYER:
@@ -302,7 +302,7 @@ async def get_registration(
         if not player or registration.player_id != player.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="You can only view your own registrations",
+                detail="Můžete zobrazit pouze své vlastní registrace",
             )
     else:
         result = await db.execute(select(Club).where(Club.user_id == current_user.id))
@@ -310,7 +310,7 @@ async def get_registration(
         if not club or training.club_id != club.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="You can only view registrations for your own trainings",
+                detail="Můžete zobrazit registrace pouze pro své vlastní tréninky",
             )
 
     return RegistrationDetailResponse(
@@ -343,19 +343,19 @@ async def cancel_registration(
     registration = result.scalar_one_or_none()
 
     if not registration:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Registration not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Registrace nebyla nalezena")
 
     result = await db.execute(select(Player).where(Player.user_id == current_user.id))
     player = result.scalar_one_or_none()
     if not player or registration.player_id != player.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can only cancel your own registrations",
+            detail="Můžete zrušit pouze své vlastní registrace",
         )
 
     if registration.status == RegistrationStatus.CANCELLED:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Registration already cancelled"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Registrace již byla zrušena"
         )
 
     was_approved = registration.status == RegistrationStatus.APPROVED
@@ -409,7 +409,7 @@ async def get_training_registrations(
     if current_user.role != UserRole.CLUB:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only clubs can view registrations",
+            detail="Registrace mohou zobrazovat pouze kluby",
         )
     result = await db.execute(
         select(TrainingSession).where(TrainingSession.id == training_session_id)
@@ -418,21 +418,21 @@ async def get_training_registrations(
     if not session:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Training session not found",
+            detail="Termín tréninku nebyl nalezen",
         )
     result = await db.execute(select(Training).where(Training.id == session.training_id))
     training = result.scalar_one_or_none()
     if not training:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Training not found",
+            detail="Trénink nebyl nalezen",
         )
     result = await db.execute(select(Club).where(Club.user_id == current_user.id))
     club = result.scalar_one_or_none()
     if club and training.club_id != club.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can only view registrations for your own trainings",
+            detail="Můžete zobrazit registrace pouze pro své vlastní tréninky",
         )
     result = await db.execute(
         select(Registration)
@@ -522,7 +522,7 @@ async def approve_registration(
     """Approve a registration (club only)."""
     if current_user.role != UserRole.CLUB:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Only clubs can approve registrations"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Registrace mohou schvalovat pouze kluby"
         )
 
     # Get registration
@@ -530,11 +530,11 @@ async def approve_registration(
     registration = result.scalar_one_or_none()
 
     if not registration:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Registration not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Registrace nebyla nalezena")
 
     if registration.status != RegistrationStatus.PENDING:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Registration is not pending"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Registrace nečeká na schválení"
         )
 
     # Get training session and training
@@ -552,7 +552,7 @@ async def approve_registration(
     if club and training.club_id != club.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can only approve registrations for your own trainings",
+            detail="Můžete schvalovat registrace pouze pro své vlastní tréninky",
         )
 
     # Check capacity
@@ -567,7 +567,7 @@ async def approve_registration(
     current_count = result.scalar_one()
 
     if current_count >= training.capacity:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Training is full")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Trénink je plný")
 
     # Approve registration
     registration.status = RegistrationStatus.APPROVED
@@ -588,7 +588,7 @@ async def reject_registration(
     """Reject a registration (club only)."""
     if current_user.role != UserRole.CLUB:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Only clubs can reject registrations"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Registrace mohou odmítat pouze kluby"
         )
 
     # Get registration
@@ -596,11 +596,11 @@ async def reject_registration(
     registration = result.scalar_one_or_none()
 
     if not registration:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Registration not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Registrace nebyla nalezena")
 
     if registration.status != RegistrationStatus.PENDING:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Registration is not pending"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Registrace nečeká na schválení"
         )
 
     # Get training session and training
@@ -618,7 +618,7 @@ async def reject_registration(
     if club and training.club_id != club.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can only reject registrations for your own trainings",
+            detail="Můžete odmítat registrace pouze pro své vlastní tréninky",
         )
 
     # Reject registration

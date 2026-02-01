@@ -25,7 +25,7 @@ async def register(user_data: UserRegister, db: AsyncSession = Depends(get_db)):
 
     if existing_user:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Tento email je již zaregistrován"
         )
 
     # Validate role
@@ -34,7 +34,7 @@ async def register(user_data: UserRegister, db: AsyncSession = Depends(get_db)):
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid role. Must be 'player' or 'club'",
+            detail="Neplatná role. Musí být 'player' nebo 'club'",
         )
 
     # Create user
@@ -81,7 +81,7 @@ async def login(
     if not user or not await verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
+            detail="Nesprávný email nebo heslo",
             headers={"WWW-Authenticate": "Bearer"},
         )
 

@@ -83,7 +83,7 @@ async def get_my_history(
     """Get training history for current user."""
     if current_user.role != UserRole.PLAYER:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Only players have training history"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Historii tréninků mají pouze hráči"
         )
 
     result = await db.execute(select(Player).where(Player.user_id == current_user.id))
@@ -118,7 +118,7 @@ async def get_my_role_profile(
         result = await db.execute(select(Player).where(Player.user_id == current_user.id))
         profile = result.scalar_one_or_none()
         if not profile:
-            raise HTTPException(status_code=404, detail="Player profile not found")
+            raise HTTPException(status_code=404, detail="Profil hráče nebyl nalezen")
         data = PlayerResponse.model_validate(profile).model_dump()
         data["first_name"] = current_user.first_name
         data["last_name"] = current_user.last_name
@@ -127,12 +127,12 @@ async def get_my_role_profile(
         result = await db.execute(select(Club).where(Club.user_id == current_user.id))
         profile = result.scalar_one_or_none()
         if not profile:
-            raise HTTPException(status_code=404, detail="Club profile not found")
+            raise HTTPException(status_code=404, detail="Profil klubu nebyl nalezen")
         data = ClubResponse.model_validate(profile).model_dump()
         data["first_name"] = current_user.first_name
         data["last_name"] = current_user.last_name
         return data
-    raise HTTPException(status_code=400, detail="Invalid user role")
+    raise HTTPException(status_code=400, detail="Neplatná role uživatele")
 
 
 @router.put("/me/profile", response_model=PlayerResponse | ClubResponse)
@@ -146,7 +146,7 @@ async def update_my_profile(
         result = await db.execute(select(Player).where(Player.user_id == current_user.id))
         player = result.scalar_one_or_none()
         if not player:
-            raise HTTPException(status_code=404, detail="Player profile not found")
+            raise HTTPException(status_code=404, detail="Profil hráče nebyl nalezen")
         update_data = profile_data.model_dump(exclude_unset=True)
         name_fields = {"first_name", "last_name"}
         for key in list(update_data.keys()):
@@ -166,7 +166,7 @@ async def update_my_profile(
         result = await db.execute(select(Club).where(Club.user_id == current_user.id))
         club = result.scalar_one_or_none()
         if not club:
-            raise HTTPException(status_code=404, detail="Club profile not found")
+            raise HTTPException(status_code=404, detail="Profil klubu nebyl nalezen")
         update_data = profile_data.model_dump(exclude_unset=True)
         name_fields = {"first_name", "last_name"}
         for key in list(update_data.keys()):
@@ -181,4 +181,4 @@ async def update_my_profile(
         out["first_name"] = current_user.first_name
         out["last_name"] = current_user.last_name
         return out
-    raise HTTPException(status_code=400, detail="Invalid user role")
+    raise HTTPException(status_code=400, detail="Neplatná role uživatele")

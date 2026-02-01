@@ -52,7 +52,7 @@ async def mark_notification_read(
     if not notification:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Notification not found"
+            detail="Oznámení nebylo nalezeno"
         )
     
     notification.read = True

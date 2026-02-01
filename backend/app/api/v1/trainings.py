@@ -186,7 +186,7 @@ async def get_training(
     if not training or not training.is_active:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Training not found",
+            detail="Trénink nebyl nalezen",
         )
     session_date: datetime | None = None
     if training.schedule_type == ScheduleType.ONE_TIME:
@@ -219,7 +219,7 @@ async def create_training(
     """Create a new training (club only)."""
     if current_user.role != UserRole.CLUB:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Only clubs can create trainings"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Tréninky mohou vytvářet pouze kluby"
         )
 
     # Get club
@@ -227,7 +227,7 @@ async def create_training(
     club = result.scalar_one_or_none()
 
     if not club:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Club profile not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profil klubu nebyl nalezen")
 
     # Limit: max 2 active offers per club
     MAX_ACTIVE_TRAININGS_PER_CLUB = 2
@@ -247,7 +247,7 @@ async def create_training(
     district = result.scalar_one_or_none()
 
     if not district:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="District not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Okres nebyl nalezen")
 
     schedule_type = (
         ScheduleType(training_data.schedule_type)
@@ -294,7 +294,7 @@ async def update_training(
     """Update a training (club only)."""
     if current_user.role != UserRole.CLUB:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Only clubs can update trainings"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Tréninky mohou upravovat pouze kluby"
         )
 
     # Get club
@@ -302,7 +302,7 @@ async def update_training(
     club = result.scalar_one_or_none()
 
     if not club:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Club profile not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profil klubu nebyl nalezen")
 
     # Get training with club loaded
     result = await db.execute(
@@ -313,12 +313,12 @@ async def update_training(
     training = result.scalar_one_or_none()
 
     if not training:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Training not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trénink nebyl nalezen")
 
     # Check ownership
     if training.club_id != club.id:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="You can only update your own trainings"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Můžete upravovat pouze své vlastní tréninky"
         )
 
     # Get district if changed
@@ -327,7 +327,7 @@ async def update_training(
         district = result.scalar_one_or_none()
 
         if not district:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="District not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Okres nebyl nalezen")
         training.region_id = district.region_id
 
     # Update fields
@@ -373,7 +373,7 @@ async def delete_training(
     """Delete a training (club only)."""
     if current_user.role != UserRole.CLUB:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Only clubs can delete trainings"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Tréninky mohou mazat pouze kluby"
         )
 
     # Get club
@@ -381,7 +381,7 @@ async def delete_training(
     club = result.scalar_one_or_none()
 
     if not club:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Club profile not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profil klubu nebyl nalezen")
 
     # Get training with club loaded
     result = await db.execute(
@@ -392,12 +392,12 @@ async def delete_training(
     training = result.scalar_one_or_none()
 
     if not training:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Training not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trénink nebyl nalezen")
 
     # Check ownership
     if training.club_id != club.id:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="You can only delete your own trainings"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Můžete mazat pouze své vlastní tréninky"
         )
 
     # Notify all players registered to this training before deactivating
@@ -471,7 +471,7 @@ async def create_training_session(
     """Create a training session (club only)."""
     if current_user.role != UserRole.CLUB:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Only clubs can create training sessions"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Termíny tréninků mohou vytvářet pouze kluby"
         )
 
     # Get training
@@ -479,7 +479,7 @@ async def create_training_session(
     training = result.scalar_one_or_none()
 
     if not training:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Training not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trénink nebyl nalezen")
 
     # Get club
     result = await db.execute(select(Club).where(Club.user_id == current_user.id))
@@ -489,7 +489,7 @@ async def create_training_session(
     if training.club_id != club.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can only create sessions for your own trainings",
+            detail="Termíny můžete vytvářet pouze pro své vlastní tréninky",
         )
 
     # Convert to naive UTC for DB (TIMESTAMP WITHOUT TIME ZONE)

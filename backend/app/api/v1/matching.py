@@ -22,7 +22,7 @@ async def get_recommendations(
     """Get recommended trainings for the current player."""
     if current_user.role != UserRole.PLAYER:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Only players can get recommendations"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Doporučení mohou získat pouze hráči"
         )
 
     # Get player
@@ -31,7 +31,7 @@ async def get_recommendations(
 
     if not player:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Player profile not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Profil hráče nebyl nalezen"
         )
 
     recommendations = await get_recommended_trainings(player, db, limit)
@@ -72,7 +72,7 @@ async def get_suitable_players_for_training(
     """Get suitable players for a training (club only)."""
     if current_user.role != UserRole.CLUB:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Only clubs can view suitable players"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Vhodné hráče mohou zobrazit pouze kluby"
         )
 
     # Get training
@@ -80,7 +80,7 @@ async def get_suitable_players_for_training(
     training = result.scalar_one_or_none()
 
     if not training:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Training not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trénink nebyl nalezen")
 
     # Check ownership
     result = await db.execute(select(Club).where(Club.user_id == current_user.id))
@@ -88,7 +88,7 @@ async def get_suitable_players_for_training(
     if club and training.club_id != club.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can only view suitable players for your own trainings",
+            detail="Vhodné hráče můžete zobrazit pouze pro své vlastní tréninky",
         )
 
     suitable_players = await get_suitable_players(training, db, limit)
