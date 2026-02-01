@@ -57,10 +57,15 @@ export default function TrainingRequests() {
     setLoading(true)
     try {
       const res = await api.get('/api/v1/training-requests/')
-      setAllRequests(res.data)
-      setRequests(res.data)
+      // Ensure we always have an array, even if API returns unexpected data
+      const data = Array.isArray(res.data) ? res.data : []
+      setAllRequests(data)
+      setRequests(data)
     } catch (err) {
-      console.error(err)
+      console.error('Failed to load training requests:', err)
+      // Reset to empty array on error
+      setAllRequests([])
+      setRequests([])
     } finally {
       setLoading(false)
     }

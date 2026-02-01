@@ -69,7 +69,7 @@ export default function Dashboard() {
             api.get('/api/v1/registrations/me/detail').catch(() => ({ data: [] })),
             api.get('/api/v1/training-requests/').catch(() => ({ data: [] })),
           ])
-          const recs: RecommendationItem[] = recRes.data
+          const recs: RecommendationItem[] = Array.isArray(recRes.data) ? recRes.data : []
           setRecommendations(recs)
           setTrainings(recs.map((r: RecommendationItem) => r.training))
           const registrations = regRes.data || []
