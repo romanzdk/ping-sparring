@@ -4,7 +4,7 @@ import api from '../services/api'
 import { useAuth } from '../hooks/useAuth'
 import { Training } from '../types'
 import Layout from '../components/Layout'
-import { Calendar, MapPin, Users, Clock, Search, Filter, Target, Sparkles, LogIn, UserPlus, Mail, Phone } from 'lucide-react'
+import { Calendar, MapPin, Clock, Search, Filter, Target, Sparkles, LogIn, UserPlus, Mail, Phone } from 'lucide-react'
 import { getDayName, formatTrainingDateLabel, formatTimeNoSeconds, getTrainingDayShort } from '../utils/trainingDate'
 import { SPORTS } from '../types'
 

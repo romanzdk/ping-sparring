@@ -11,7 +11,7 @@ import { cs } from 'date-fns/locale'
 export default function RegistrationDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { user, loading: authLoading } = useAuth()
+  const { loading: authLoading } = useAuth()
   const [registration, setRegistration] = useState<RegistrationDetailType | null>(null)
   const [loading, setLoading] = useState(true)
 

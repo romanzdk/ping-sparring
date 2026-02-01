@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import api from '../services/api'
 import Layout from '../components/Layout'
-import { Calendar, Clock, MapPin, Users, Target, Zap, ArrowLeft, Info, DollarSign, HelpCircle } from 'lucide-react'
+import { Calendar, MapPin, Target, Zap, ArrowLeft, Info, DollarSign, HelpCircle } from 'lucide-react'
 import { SPORTS } from '../types'
 
 export default function TrainingCreate() {

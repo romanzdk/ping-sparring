@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import api from '../services/api'
 import Layout from '../components/Layout'
-import { Calendar, Clock, MapPin, Target, Save, ArrowLeft, Info, DollarSign, Trash2, HelpCircle } from 'lucide-react'
+import { Calendar, MapPin, Target, Save, ArrowLeft, Info, DollarSign, Trash2, HelpCircle } from 'lucide-react'
 import { SPORTS } from '../types'
 
 function timeToInputValue(t: string | undefined): string {

@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import api from '../services/api'
 import Layout from '../components/Layout'
-import { Calendar, MapPin, Target, Plus, Users, Sparkles, CheckCircle, Edit2, Trash2, Filter, Search, LogIn, UserPlus, Mail, Phone } from 'lucide-react'
+import { Calendar, Target, Plus, Users, Sparkles, CheckCircle, Edit2, Trash2, Filter, Search, LogIn, UserPlus, Mail, Phone } from 'lucide-react'
 import { SPORTS } from '../types'
 
 interface TrainingRequest {
@@ -276,7 +276,6 @@ export default function TrainingRequests() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {requests.map((request, index) => {
               const detailUrl = `/training-requests/${request.id}`
-              const isClickable = isAuthenticated && (user?.role === 'club' || user?.role === 'player')
               const handleCardClick = () => {
                 if (!isAuthenticated) {
                   navigate(`/login?next=${encodeURIComponent(detailUrl)}`)
