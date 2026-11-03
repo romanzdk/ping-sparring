@@ -8,10 +8,16 @@
 ![Backend](https://img.shields.io/badge/backend-FastAPI-009688)
 ![Frontend](https://img.shields.io/badge/frontend-React%20%2B%20TypeScript-3178c6)
 ![Language](https://img.shields.io/badge/UI-Czech-lightgrey)
+![Status](https://img.shields.io/badge/status-proof%20of%20concept-orange)
 
 ![Landing page](docs/screenshots/landing.png)
 
 </div>
+
+> [!WARNING]
+> **This project is not maintained or developed anymore.** It was only a proof of concept: a
+> quick try at whether table tennis sparring could be matched automatically. The code is shared
+> as it is, with no support, no releases and no plans for new features.
 
 Ping Sparring (in the app: **Můj trénink**, "my training") is a web platform that matches
 table tennis players with training sessions. Clubs and coaches post sessions, players post
@@ -81,8 +87,8 @@ ping-sparring/
 ### Run with Docker Compose
 
 ```bash
-git clone https://github.com/romanzdk/pingsparring.git
-cd pingsparring
+git clone https://github.com/romanzdk/ping-sparring.git
+cd ping-sparring
 cp .env.example .env            # then edit the values
 docker-compose up -d
 docker-compose exec backend alembic upgrade head      # database migrations
@@ -150,7 +156,8 @@ The full, interactive API reference is at `/docs` on a running backend. The main
 
 ## Contributing
 
-Issues and pull requests are welcome.
+The project is not maintained, so issues and pull requests will probably not get a reply.
+Feel free to fork it and build on it. If you do send a change:
 
 1. Fork the repo and create a branch.
 2. Keep the change small and focused.
@@ -158,7 +165,7 @@ Issues and pull requests are welcome.
    with Docker Compose.
 4. Open a pull request that explains what changed and why.
 
-Ideas that are not done yet: filtering by distance from an address, sign-in with Google and
+Ideas that were never done: filtering by distance from an address, sign-in with Google and
 other providers, and an admin area.
 
 ## License
